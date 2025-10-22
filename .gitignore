@@ -1,0 +1,10 @@
+# All Plots and Results Folders
+ECM_Params_Estimation
+Matlab_Result
+MLP_Plots
+qc_plots
+SOH_Regression_Plots
+MLP_Transfer_Learning_Calibration/outputs
+
+# Generated new csv files
+*.csv

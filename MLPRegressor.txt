@@ -1,0 +1,197 @@
+Unless specified in header, features used for MLP are [R0,R1,R2,R3,SOC,Temp]
+
+
+======================== MLP Regressor 100trials all data Train and Test ====================================
+Train: 17561, Val: 2195, Test: 2196
+Epoch 001 | train_RMSE: 0.8040 | val_MAE: 0.0832 | val_RMSE: 0.1152 | val_MAPE: 3.24%
+Epoch 010 | train_RMSE: 0.1855 | val_MAE: 0.0450 | val_RMSE: 0.0591 | val_MAPE: 1.51%
+Epoch 020 | train_RMSE: 0.1081 | val_MAE: 0.0289 | val_RMSE: 0.0349 | val_MAPE: 1.01%
+Epoch 030 | train_RMSE: 0.0760 | val_MAE: 0.0243 | val_RMSE: 0.0312 | val_MAPE: 0.91%
+Epoch 040 | train_RMSE: 0.0647 | val_MAE: 0.0125 | val_RMSE: 0.0164 | val_MAPE: 0.48%
+[LR] reduced: 0.003000 → 0.001500
+Epoch 050 | train_RMSE: 0.0608 | val_MAE: 0.0105 | val_RMSE: 0.0142 | val_MAPE: 0.40%
+Epoch 060 | train_RMSE: 0.0602 | val_MAE: 0.0182 | val_RMSE: 0.0240 | val_MAPE: 0.63%
+[LR] reduced: 0.001500 → 0.000750
+Epoch 070 | train_RMSE: 0.0609 | val_MAE: 0.0095 | val_RMSE: 0.0139 | val_MAPE: 0.37%
+[LR] reduced: 0.000750 → 0.000375
+Epoch 080 | train_RMSE: 0.0592 | val_MAE: 0.0113 | val_RMSE: 0.0156 | val_MAPE: 0.42%
+Epoch 090 | train_RMSE: 0.0580 | val_MAE: 0.0120 | val_RMSE: 0.0161 | val_MAPE: 0.44%
+[LR] reduced: 0.000375 → 0.000188
+[LR] reduced: 0.000188 → 0.000094
+Epoch 100 | train_RMSE: 0.0574 | val_MAE: 0.0076 | val_RMSE: 0.0106 | val_MAPE: 0.31%
+[LR] reduced: 0.000094 → 0.000047
+Epoch 110 | train_RMSE: 0.0571 | val_MAE: 0.0084 | val_RMSE: 0.0118 | val_MAPE: 0.33%
+Early stop at epoch 112. Best val MAE: 0.0070
+Train R²: 0.9994
+
+== Test Set Results ==
+MAE : 0.00688 | RMSE: 0.01128 | MAPE: 0.28%
+Test R²: 0.9994
+
+
+
+======================== MLP Regressor 100trials all data Train on 0, 45 temp and Test on 25 temp ====================================
+Train: 8656, Val: 2165, Test: 11131
+Epoch 001 | train_RMSE: 1.0435 | val_MAE: 0.1559 | val_RMSE: 0.1973 | val_MAPE: 5.95%
+Epoch 010 | train_RMSE: 0.2597 | val_MAE: 0.0792 | val_RMSE: 0.0898 | val_MAPE: 3.02%
+Epoch 020 | train_RMSE: 0.1838 | val_MAE: 0.0578 | val_RMSE: 0.0724 | val_MAPE: 1.92%
+Epoch 030 | train_RMSE: 0.1441 | val_MAE: 0.0275 | val_RMSE: 0.0351 | val_MAPE: 0.91%
+[LR] reduced: 0.003000 → 0.001500
+Epoch 040 | train_RMSE: 0.1125 | val_MAE: 0.0187 | val_RMSE: 0.0248 | val_MAPE: 0.64%
+Epoch 050 | train_RMSE: 0.0943 | val_MAE: 0.0195 | val_RMSE: 0.0231 | val_MAPE: 0.72%
+Epoch 060 | train_RMSE: 0.0864 | val_MAE: 0.0092 | val_RMSE: 0.0127 | val_MAPE: 0.33%
+[LR] reduced: 0.001500 → 0.000750
+Epoch 070 | train_RMSE: 0.0797 | val_MAE: 0.0162 | val_RMSE: 0.0212 | val_MAPE: 0.53%
+Epoch 080 | train_RMSE: 0.0763 | val_MAE: 0.0110 | val_RMSE: 0.0142 | val_MAPE: 0.38%
+[LR] reduced: 0.000750 → 0.000375
+Epoch 090 | train_RMSE: 0.0733 | val_MAE: 0.0137 | val_RMSE: 0.0170 | val_MAPE: 0.52%
+[LR] reduced: 0.000375 → 0.000188
+[LR] reduced: 0.000188 → 0.000094
+Epoch 100 | train_RMSE: 0.0719 | val_MAE: 0.0120 | val_RMSE: 0.0163 | val_MAPE: 0.41%
+Early stop at epoch 103. Best val MAE: 0.0066
+Train R²: 0.9998
+
+== Test Set Results ==
+MAE : 0.14831 | RMSE: 0.16787 | MAPE: 5.28%
+Test R²: 0.6130
+
+
+
+======================== MLP Regressor 100trials all data Train on 0, 25 temp and Test on 45 temp ====================================
+Train: 14564, Val: 3642, Test: 3746
+Epoch 001 | train_RMSE: 0.7986 | val_MAE: 0.1005 | val_RMSE: 0.1215 | val_MAPE: 3.85%
+Epoch 010 | train_RMSE: 0.2012 | val_MAE: 0.0432 | val_RMSE: 0.0555 | val_MAPE: 1.52%
+Epoch 020 | train_RMSE: 0.1166 | val_MAE: 0.0264 | val_RMSE: 0.0323 | val_MAPE: 0.94%
+Epoch 030 | train_RMSE: 0.0809 | val_MAE: 0.0104 | val_RMSE: 0.0138 | val_MAPE: 0.39%
+Epoch 040 | train_RMSE: 0.0678 | val_MAE: 0.0209 | val_RMSE: 0.0284 | val_MAPE: 0.70%
+Epoch 050 | train_RMSE: 0.0642 | val_MAE: 0.0173 | val_RMSE: 0.0228 | val_MAPE: 0.63%
+[LR] reduced: 0.003000 â†’ 0.001500
+Epoch 060 | train_RMSE: 0.0625 | val_MAE: 0.0069 | val_RMSE: 0.0098 | val_MAPE: 0.26%
+[LR] reduced: 0.001500 â†’ 0.000750
+Epoch 070 | train_RMSE: 0.0627 | val_MAE: 0.0062 | val_RMSE: 0.0096 | val_MAPE: 0.22%
+[LR] reduced: 0.000750 â†’ 0.000375
+Epoch 080 | train_RMSE: 0.0603 | val_MAE: 0.0044 | val_RMSE: 0.0066 | val_MAPE: 0.15%
+Epoch 090 | train_RMSE: 0.0603 | val_MAE: 0.0044 | val_RMSE: 0.0063 | val_MAPE: 0.15%
+Epoch 100 | train_RMSE: 0.0593 | val_MAE: 0.0052 | val_RMSE: 0.0073 | val_MAPE: 0.18%
+[LR] reduced: 0.000375 â†’ 0.000188
+Epoch 110 | train_RMSE: 0.0599 | val_MAE: 0.0031 | val_RMSE: 0.0045 | val_MAPE: 0.11%
+[LR] reduced: 0.000188 â†’ 0.000094
+Epoch 120 | train_RMSE: 0.0586 | val_MAE: 0.0030 | val_RMSE: 0.0043 | val_MAPE: 0.11%
+[LR] reduced: 0.000094 â†’ 0.000047
+Epoch 130 | train_RMSE: 0.0584 | val_MAE: 0.0045 | val_RMSE: 0.0065 | val_MAPE: 0.15%
+Epoch 140 | train_RMSE: 0.0587 | val_MAE: 0.0045 | val_RMSE: 0.0072 | val_MAPE: 0.14%
+[LR] reduced: 0.000047 â†’ 0.000023
+Epoch 150 | train_RMSE: 0.0594 | val_MAE: 0.0040 | val_RMSE: 0.0060 | val_MAPE: 0.14%
+[LR] reduced: 0.000023 â†’ 0.000012
+Epoch 160 | train_RMSE: 0.0584 | val_MAE: 0.0054 | val_RMSE: 0.0082 | val_MAPE: 0.17%
+Early stop at epoch 164. Best val MAE: 0.0027
+Train RÂ²: 0.9999
+
+== Test Set Results ==
+MAE : 0.12072 | RMSE: 0.14147 | MAPE: 4.08%
+Test RÂ²: 0.4848
+
+
+======================== MLP Regressor 100trials all data Train on 25, 45 temp and Test on 0 temp ====================================
+Train: 11901, Val: 2976, Test: 7075
+Epoch 001 | train_RMSE: 0.9336 | val_MAE: 0.1192 | val_RMSE: 0.1411 | val_MAPE: 4.05%
+Epoch 010 | train_RMSE: 0.2170 | val_MAE: 0.0427 | val_RMSE: 0.0531 | val_MAPE: 1.43%
+Epoch 020 | train_RMSE: 0.1328 | val_MAE: 0.0199 | val_RMSE: 0.0248 | val_MAPE: 0.68%
+Epoch 030 | train_RMSE: 0.0862 | val_MAE: 0.0119 | val_RMSE: 0.0150 | val_MAPE: 0.40%
+Epoch 040 | train_RMSE: 0.0516 | val_MAE: 0.0073 | val_RMSE: 0.0098 | val_MAPE: 0.24%
+Epoch 050 | train_RMSE: 0.0354 | val_MAE: 0.0063 | val_RMSE: 0.0092 | val_MAPE: 0.21%
+[LR] reduced: 0.003000 â†’ 0.001500
+Epoch 060 | train_RMSE: 0.0327 | val_MAE: 0.0033 | val_RMSE: 0.0048 | val_MAPE: 0.11%
+Epoch 070 | train_RMSE: 0.0327 | val_MAE: 0.0043 | val_RMSE: 0.0069 | val_MAPE: 0.14%
+[LR] reduced: 0.001500 â†’ 0.000750
+Epoch 080 | train_RMSE: 0.0308 | val_MAE: 0.0043 | val_RMSE: 0.0064 | val_MAPE: 0.14%
+[LR] reduced: 0.000750 â†’ 0.000375
+Epoch 090 | train_RMSE: 0.0299 | val_MAE: 0.0052 | val_RMSE: 0.0091 | val_MAPE: 0.16%
+[LR] reduced: 0.000375 â†’ 0.000188
+Epoch 100 | train_RMSE: 0.0296 | val_MAE: 0.0020 | val_RMSE: 0.0025 | val_MAPE: 0.07%
+[LR] reduced: 0.000188 â†’ 0.000094
+Epoch 110 | train_RMSE: 0.0293 | val_MAE: 0.0021 | val_RMSE: 0.0028 | val_MAPE: 0.07%
+Epoch 120 | train_RMSE: 0.0294 | val_MAE: 0.0042 | val_RMSE: 0.0068 | val_MAPE: 0.13%
+[LR] reduced: 0.000094 â†’ 0.000047
+Epoch 130 | train_RMSE: 0.0299 | val_MAE: 0.0026 | val_RMSE: 0.0039 | val_MAPE: 0.08%
+[LR] reduced: 0.000047 â†’ 0.000023
+Epoch 140 | train_RMSE: 0.0288 | val_MAE: 0.0029 | val_RMSE: 0.0042 | val_MAPE: 0.09%
+[LR] reduced: 0.000023 â†’ 0.000012
+Early stop at epoch 148. Best val MAE: 0.0018
+Train RÂ²: 0.9999
+
+== Test Set Results ==
+MAE : 0.48824 | RMSE: 0.56429 | MAPE: 22.14%
+Test RÂ²: 0.3872
+
+
+
+
+======================== MLP Regressor 100trials all data Train and Test; Using 1/(Temp+273.5) ====================================
+Train: 8656, Val: 2165, Test: 11131
+Epoch 001 | train_RMSE: 1.0497 | val_MAE: 0.1339 | val_RMSE: 0.1697 | val_MAPE: 5.19%
+Epoch 010 | train_RMSE: 0.2695 | val_MAE: 0.0599 | val_RMSE: 0.0719 | val_MAPE: 2.36%
+Epoch 020 | train_RMSE: 0.1946 | val_MAE: 0.0420 | val_RMSE: 0.0572 | val_MAPE: 1.43%
+Epoch 030 | train_RMSE: 0.1466 | val_MAE: 0.0227 | val_RMSE: 0.0311 | val_MAPE: 0.79%
+Epoch 040 | train_RMSE: 0.1120 | val_MAE: 0.0282 | val_RMSE: 0.0363 | val_MAPE: 0.92%
+Epoch 050 | train_RMSE: 0.0932 | val_MAE: 0.0235 | val_RMSE: 0.0277 | val_MAPE: 0.82%
+[LR] reduced: 0.003000 â†’ 0.001500
+Epoch 060 | train_RMSE: 0.0837 | val_MAE: 0.0096 | val_RMSE: 0.0130 | val_MAPE: 0.35%
+[LR] reduced: 0.001500 â†’ 0.000750
+Epoch 070 | train_RMSE: 0.0809 | val_MAE: 0.0191 | val_RMSE: 0.0229 | val_MAPE: 0.66%
+[LR] reduced: 0.000750 â†’ 0.000375
+Epoch 080 | train_RMSE: 0.0804 | val_MAE: 0.0107 | val_RMSE: 0.0128 | val_MAPE: 0.41%
+Epoch 090 | train_RMSE: 0.0789 | val_MAE: 0.0138 | val_RMSE: 0.0164 | val_MAPE: 0.53%
+[LR] reduced: 0.000375 â†’ 0.000188
+Epoch 100 | train_RMSE: 0.0788 | val_MAE: 0.0139 | val_RMSE: 0.0173 | val_MAPE: 0.48%
+[LR] reduced: 0.000188 â†’ 0.000094
+Epoch 110 | train_RMSE: 0.0790 | val_MAE: 0.0123 | val_RMSE: 0.0153 | val_MAPE: 0.45%
+[LR] reduced: 0.000094 â†’ 0.000047
+Early stop at epoch 114. Best val MAE: 0.0074
+Train RÂ²: 0.9997
+
+== Test Set Results ==
+MAE : 0.13844 | RMSE: 0.15486 | MAPE: 4.89%
+Test RÂ²: 0.6707
+
+
+
+
+========================[More Battery] MLP Regressor 100trials all data Train and Test ====================================
+Train: 24278, Val: 3035, Test: 3035
+Epoch 001 | train_RMSE: 0.7293 | val_MAE: 0.1688 | val_RMSE: 0.1873 | val_MAPE: 5.91%
+Epoch 010 | train_RMSE: 0.1538 | val_MAE: 0.0521 | val_RMSE: 0.0624 | val_MAPE: 1.71%
+Epoch 020 | train_RMSE: 0.0767 | val_MAE: 0.0177 | val_RMSE: 0.0231 | val_MAPE: 0.65%
+Epoch 030 | train_RMSE: 0.0605 | val_MAE: 0.0214 | val_RMSE: 0.0288 | val_MAPE: 0.74%
+Epoch 040 | train_RMSE: 0.0551 | val_MAE: 0.0123 | val_RMSE: 0.0179 | val_MAPE: 0.43%
+[LR] reduced: 0.003000 → 0.001500
+Epoch 050 | train_RMSE: 0.0557 | val_MAE: 0.0188 | val_RMSE: 0.0261 | val_MAPE: 0.64%
+Epoch 060 | train_RMSE: 0.0526 | val_MAE: 0.0076 | val_RMSE: 0.0123 | val_MAPE: 0.28%
+[LR] reduced: 0.001500 → 0.000750
+Epoch 070 | train_RMSE: 0.0499 | val_MAE: 0.0094 | val_RMSE: 0.0144 | val_MAPE: 0.35%
+[LR] reduced: 0.000750 → 0.000375
+Epoch 080 | train_RMSE: 0.0492 | val_MAE: 0.0071 | val_RMSE: 0.0113 | val_MAPE: 0.27%
+Epoch 090 | train_RMSE: 0.0491 | val_MAE: 0.0062 | val_RMSE: 0.0083 | val_MAPE: 0.23%
+[LR] reduced: 0.000375 → 0.000188
+Epoch 100 | train_RMSE: 0.0477 | val_MAE: 0.0087 | val_RMSE: 0.0131 | val_MAPE: 0.28%
+Epoch 110 | train_RMSE: 0.0485 | val_MAE: 0.0055 | val_RMSE: 0.0080 | val_MAPE: 0.20%
+[LR] reduced: 0.000188 → 0.000094
+Epoch 120 | train_RMSE: 0.0473 | val_MAE: 0.0053 | val_RMSE: 0.0084 | val_MAPE: 0.18%
+Epoch 130 | train_RMSE: 0.0472 | val_MAE: 0.0044 | val_RMSE: 0.0068 | val_MAPE: 0.15%
+Epoch 140 | train_RMSE: 0.0470 | val_MAE: 0.0060 | val_RMSE: 0.0098 | val_MAPE: 0.19%
+[LR] reduced: 0.000094 → 0.000047
+Epoch 150 | train_RMSE: 0.0480 | val_MAE: 0.0046 | val_RMSE: 0.0069 | val_MAPE: 0.16%
+[LR] reduced: 0.000047 → 0.000023
+Epoch 160 | train_RMSE: 0.0476 | val_MAE: 0.0060 | val_RMSE: 0.0093 | val_MAPE: 0.20%
+Epoch 170 | train_RMSE: 0.0481 | val_MAE: 0.0042 | val_RMSE: 0.0069 | val_MAPE: 0.14%
+[LR] reduced: 0.000023 → 0.000012
+Epoch 180 | train_RMSE: 0.0479 | val_MAE: 0.0054 | val_RMSE: 0.0083 | val_MAPE: 0.18%
+[LR] reduced: 0.000012 → 0.000006
+Epoch 190 | train_RMSE: 0.0474 | val_MAE: 0.0053 | val_RMSE: 0.0084 | val_MAPE: 0.17%
+[LR] reduced: 0.000006 → 0.000003
+Early stop at epoch 196. Best val MAE: 0.0040
+Train R²: 0.9998
+
+== Test Set Results ==
+MAE : 0.00401 | RMSE: 0.00631 | MAPE: 0.14%
+Test R²: 0.9998
