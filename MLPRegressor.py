@@ -1,487 +1,329 @@
-# train_on_median_test_on_alltrials.py
 import os
-from pathlib import Path
 import math
+import json
 import numpy as np
 import pandas as pd
-import json
+from pathlib import Path
 from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
-import matplotlib.patches as mpatches
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import seaborn as sns
 
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from MLPModel import *
 
 # ----------------------------
-# 0) Reproducibility & device
+# Global Constants
 # ----------------------------
 SEED = 42
-np.random.seed(SEED); torch.manual_seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# ----------------------------
-# 1) Load data
-# ----------------------------
-import matplotlib as mpl
+
+# ================================================================
+# Helper Functions
+# ================================================================
 def build_cell_colormap(metadata, shade_min=0.30, shade_max=0.90, base_maps=None):
-    """
-    Create a dict: {cell_name: '#RRGGBB'}.
-    
-    Parameters
-    ----------
-    metadata : dict
-        loaded from json file
-    shade_min, shade_max : float in [0,1]
-        Range within the colormap to sample shades (avoid extremes that are too light/dark).
-    base_maps : dict or None
-        Optional override of base colormaps per temperature, e.g. {0:"Blues", 25:"Greens", 45:"Reds"}.
-    """
-    # Default temperature → base colormap
     default_maps = {0: "Blues", 25: "Greens", 45: "Reds"}
     if base_maps:
         default_maps.update(base_maps)
-    
-    # Group cells by temperature
+
     groups = {}
     for cell, info in metadata.items():
         t = int(info["temperature"])
         groups.setdefault(t, []).append(cell)
-    
-    # Build color map per group, assigning distinct shades
+
     cell_to_color = {}
     for t, cells in groups.items():
-        cells_sorted = sorted(cells)  # deterministic assignment
+        cells_sorted = sorted(cells)
         n = len(cells_sorted)
-        if n == 1:
-            positions = [0.6]
-        else:
-            positions = np.linspace(shade_min, shade_max, n)
-        
+        positions = [0.6] if n == 1 else np.linspace(shade_min, shade_max, n)
         cmap_name = default_maps.get(t, None)
-        if cmap_name is None or cmap_name not in mpl.colormaps:
-            # Fallback if an unexpected temperature shows up
-            cmap = mpl.colormaps["gray "]
-        else:
-            cmap = mpl.colormaps[cmap_name]
-        
+        cmap = mpl.colormaps.get(cmap_name, mpl.colormaps["gray"])
         for cell, pos in zip(cells_sorted, positions):
-            rgba = cmap(pos)
-            cell_to_color[cell] = mpl.colors.to_hex(rgba)
-    
+            cell_to_color[cell] = mpl.colors.to_hex(cmap(pos))
     return cell_to_color
 
-battery_json_file = "../EVC_EIS_Data/original_data/Battery_Info_DRT.json" # Check the path
 
-with open(battery_json_file, "r") as f:
-    battery_metadata = json.load(f)   # <--- this is now a dict
-
-COLOR_MAP = build_cell_colormap(battery_metadata)
-
-# Load Data
-
-alltrials_path_candidates = ["fulldf_global_all.csv"] 
-
-def first_existing(paths):
-    for p in paths:
-        if Path(p).exists():
-            return Path(p)
-    return None
-
-alltrials_path = first_existing(alltrials_path_candidates)
-
-
-if alltrials_path is None:
-    raise FileNotFoundError("df_global_all.csv (or df_gloabl_all.csv) not found.")
-
-df_all = pd.read_csv(alltrials_path, index_col=0)
-
-# ----------------------------
-# 2) Columns & cleaning
-# ----------------------------
-# FEATURES = ["R0","R1","R2","R3","SOC","Temp"]
-FEATURES = ["R0","R1","R2","R3"]
-# FEATURES = ["R0","R1","R2","R3","SOC","Temp","C1", "n1", "C2", "n2","C3","n3", "Aw"]
-
-TARGET = "SOH"
-REQ_COLS = ["CELL","SOH","SOC","Temp","R0","R1","R2","R3"]
-# REQ_COLS = ["CELL","SOH","SOC","Temp", "R0","R1","R2","R3","SOC","Temp","C1", "n1", "C2", "n2","C3","n3", "Aw"]
-
-for col in REQ_COLS:
-    if col not in df_all.columns:
-        raise ValueError(f"All-trials df missing column: {col}")
-
-# Drop NA rows for the used columns
-df_all = df_all.dropna(subset=REQ_COLS).reset_index(drop=True)
-
-# # Keep SOH within sane bounds, adjust if needed
-# df_med[TARGET] = df_med[TARGET].clip(lower=0.0, upper=1.2)
-# df_all[TARGET] = df_all[TARGET].clip(lower=0.0, upper=1.2)
-
-# # 0) Basic overview
-# print("Cells in ALL-TRIALS (raw):", df_all["CELL"].nunique())
-# print(df_all["CELL"].value_counts())
-
-# # 1) Check missing by column and by cell
-# print("\nMissing per column in ALL-TRIALS:")
-# print(df_all[["CELL","SOH","SOC","Temp","R0","R1","R2","R3"]].isna().sum())
-
-# print("\nRows per cell BEFORE dropna:")
-# print(df_all.groupby("CELL").size().sort_values())
-
-# # 2) If you did dropna earlier, check AFTER dropna
-# df_all_after = df_all.dropna(subset=["SOH","SOC","R0","R1","R2","R3","Temp"])
-# print("\nRows per cell AFTER dropna:")
-# print(df_all_after.groupby("CELL").size().sort_values())
-
-# missing_cells = sorted(set(df_all["CELL"]) - set(df_all_after["CELL"]))
-# print("\nCells eliminated by dropna:", missing_cells)
-
-
-# ----------------------------
-# 3) Build "condition id" to keep identical operating points together
-#    You can tweak bin precision to match your data scale.
-# ----------------------------
 def build_condition_key(df: pd.DataFrame, soh_round=3, soc_round=1):
     soh_bin = df["SOH"].round(soh_round)
     soc_bin = df["SOC"].round(soc_round)
     key = df["CELL"].astype(str) + "|" + soh_bin.astype(str) + "|" + soc_bin.astype(str)
     return key, soh_bin, soc_bin
 
+### Functional Data loader and Split
 
-cond_all, all_sohbin, all_socbin = build_condition_key(df_all, soh_round=3, soc_round=1)
-df_all = df_all.assign(COND_ID=cond_all, SOH_BIN=all_sohbin, SOC_BIN=all_socbin)
+def parse_soc_range(expr: str) -> Tuple[float, float, bool, bool]:
+    """
+    Parse a SOC range expression like "(0.3,0.5]" or "[0.8,1]" into
+    (low, high, include_low, include_high).
+    """
+    expr = expr.strip()
+    include_low = expr.startswith("[")
+    include_high = expr.endswith("]")
+    expr = expr.strip("[]()")
+    low, high = [float(x) for x in expr.split(",")]
+    return low, high, include_low, include_high
 
 
-# ----------------------------
-# 4) Split: train/val 
-# ----------------------------
+def filter_by_soc(df: pd.DataFrame, soc_ranges: List[str]) -> pd.DataFrame:
+    """Filter rows whose SOC falls into *any* of the provided ranges."""
+    mask_total = np.zeros(len(df), dtype=bool)
+    for expr in soc_ranges:
+        low, high, inc_low, inc_high = parse_soc_range(expr)
+        mask = (df["SOC"] > low if not inc_low else df["SOC"] >= low) & \
+               (df["SOC"] < high if not inc_high else df["SOC"] <= high)
+        mask_total |= mask
+    return df[mask_total]
 
-X_all = df_all[FEATURES].values.astype(np.float32)
-y_all = df_all[TARGET].values.astype(np.float32)
-all_idx = np.arange(len(df_all))
 
-# 80% train, 20% temp
-X_train, X_temp, y_train, y_temp, train_idx, temp_idx = train_test_split(
-    X_all, y_all, all_idx, test_size=0.2, random_state=42, shuffle=True
-)
+def load_and_split_data(
+    csv_path: str,
+    train_cells: List[str],
+    test_cells: List[str],
+    split_by_soc: bool = False,
+    train_soc_ranges: List[str] = None,
+    test_soc_ranges: List[str] = None,
+    features: List[str] = ["R0", "R1", "R2", "R3"],
+    target: str = "SOH",
+    val_ratio: float = 0.2,
+    random_state: int = 42,
+    scale_data: bool = True,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DataFrame, pd.DataFrame, pd.DataFrame, StandardScaler]:
+    """
+    Load, filter, and split the data according to given cell and SOC conditions.
 
-# 10% val, 10% test
-X_val, X_test, y_val, y_test, val_idx, test_idx = train_test_split(
-    X_temp, y_temp, temp_idx, test_size=0.5, random_state=42, shuffle=True
-)
+    The validation set is 20% of the training data by default.
+    """
 
-print(f"Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
+    # ---- Load and clean ----
+    df = pd.read_csv(csv_path, index_col=0)
+    req_cols = ["CELL", "SOH", "SOC", "Temp"] + features
+    df = df.dropna(subset=req_cols)
 
-# ----------------------------
-# 5) Scale (fit on train only)
-# ----------------------------
-from sklearn.preprocessing import StandardScaler
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_val   = scaler.transform(X_val)
-X_test = scaler.transform(X_test)
+    # ---- Filter by cell ----
+    df_train = df[df["CELL"].isin(train_cells)].copy()
+    df_test = df[df["CELL"].isin(test_cells)].copy()
 
-# ----------------------------
-# 6) Torch dataset & loaders
-# ----------------------------
-class TabDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = torch.from_numpy(X).float()
-        self.y = torch.from_numpy(y).float().unsqueeze(1)
-    def __len__(self): return len(self.X)
-    def __getitem__(self, i): return self.X[i], self.y[i]
+    # ---- Optional SOC range filtering ----
+    if split_by_soc:
+        if train_soc_ranges is None or test_soc_ranges is None:
+            raise ValueError("When split_by_soc=True, both train_soc_ranges and test_soc_ranges must be provided.")
+        df_train = filter_by_soc(df_train, train_soc_ranges)
+        df_test = filter_by_soc(df_test, test_soc_ranges)
 
-train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
-val_loader   = DataLoader(TabDataset(X_val,   y_val),   batch_size=256, shuffle=False)
+    # ---- Prepare data ----
+    X_train_full = df_train[features].values.astype(np.float32)
+    y_train_full = df_train[target].values.astype(np.float32)
 
-# ----------------------------
-# 7) Model
-# ----------------------------
-class MLPRegressor(nn.Module):
-    def __init__(self, in_dim: int, hidden: List[int] = [128, 64], p_drop: float = 0.1):
-        super().__init__()
-        layers = []
-        last = in_dim
-        for h in hidden:
-            layers += [nn.Linear(last, h), nn.ReLU(), nn.Dropout(p_drop)]
-            last = h
-        layers += [nn.Linear(last, 1)]
-        self.net = nn.Sequential(*layers)
-    def forward(self, x):
-        return self.net(x)
+    # Validation = 20% of training set
+    X_train, X_val, y_train, y_val, df_train_split, df_val_split = train_test_split(
+        X_train_full, y_train_full, df_train, test_size=val_ratio,
+        random_state=random_state, shuffle=True
+    )
 
-model = MLPRegressor(in_dim=len(FEATURES), hidden=[128, 64, 32], p_drop=0.1).to(DEVICE)
+    X_test = df_test[features].values.astype(np.float32)
+    y_test = df_test[target].values.astype(np.float32)
 
-# ----------------------------
-# 8) Train utils
-# ----------------------------
-# criterion = nn.L1Loss()
-criterion = nn.MSELoss()
-optimizer = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=1e-2)
-# Avoid 'verbose' for broad compatibility
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=8)
+    # ---- Scaling ----
+    scaler = None
+    if scale_data:
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_val = scaler.transform(X_val)
+        X_test = scaler.transform(X_test)
 
-def evaluate(loader, net) -> Tuple[float, float, float]:
-    net.eval()
-    preds, trues = [], []
-    with torch.no_grad():
-        for xb, yb in loader:
-            xb = xb.to(DEVICE); yb = yb.to(DEVICE)
-            out = net(xb)
-            preds.append(out.squeeze(1).cpu().numpy())
-            trues.append(yb.squeeze(1).cpu().numpy())
-    y_true = np.concatenate(trues)
-    y_pred = np.concatenate(preds)
-    mae  = mean_absolute_error(y_true, y_pred)
-    rmse = math.sqrt(mean_squared_error(y_true, y_pred))
-    mape = np.mean(np.abs((y_true - y_pred) / np.clip(np.abs(y_true), 1e-6, None))) * 100.0
-    return mae, rmse, mape
+    print(f"Train samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
 
-class EarlyStopper:
-    def __init__(self, patience=30, min_delta=1e-5):
-        self.patience = patience; self.min_delta = min_delta
-        self.counter = 0; self.best = np.inf; self.state = None
-    def step(self, metric, model):
-        if (self.best - metric) > self.min_delta:
-            self.best = metric; self.counter = 0
-            self.state = {k: v.detach().cpu().clone() for k,v in model.state_dict().items()}
-        else:
-            self.counter += 1
-        return self.counter < self.patience
-    def load_best(self, model):
-        if self.state is not None:
-            model.load_state_dict(self.state)
+    return X_train, X_val, X_test, y_train, y_val, y_test, df_train_split, df_val_split, df_test, scaler
 
-# ----------------------------
-# 9) Train
-# ----------------------------
-def train_model(model, train_loader, val_loader, epochs=400):
-    early = EarlyStopper(patience=30, min_delta=1e-5)
-    for ep in range(1, epochs+1):
-        model.train()
-        running = 0.0
-        for xb, yb in train_loader:
-            xb = xb.to(DEVICE); yb = yb.to(DEVICE)
-            optimizer.zero_grad()
-            pred = model(xb)
-            loss = criterion(pred, yb)
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), 2.0)
-            optimizer.step()
-            running += loss.item() * xb.size(0)
-
-        train_loss = running / len(train_loader.dataset)
-        val_mae, val_rmse, val_mape = evaluate(val_loader, model)
-
-        old_lr = optimizer.param_groups[0]['lr']
-        scheduler.step(val_mae)
-        new_lr = optimizer.param_groups[0]['lr']
-        if new_lr != old_lr:
-            print(f"[LR] reduced: {old_lr:.6f} → {new_lr:.6f}")
-
-        if ep % 10 == 0 or ep == 1:
-            print(f"Epoch {ep:03d} | train_RMSE: {math.sqrt(train_loss):.4f} | "
-                  f"val_MAE: {val_mae:.4f} | val_RMSE: {val_rmse:.4f} | val_MAPE: {val_mape:.2f}%")
-
-        if not early.step(val_mae, model):
-            print(f"Early stop at epoch {ep}. Best val MAE: {early.best:.4f}")
-            break
-
-    early.load_best(model)
-
-train_model(model, train_loader, val_loader, epochs=400)
-
-# ----------------------------
-# 10) Test on training set
-# ----------------------------
-with torch.no_grad():
-    y_pred_train = (model(torch.from_numpy(X_train).float().to(DEVICE))
-                    .squeeze(1).cpu().numpy())
-
-    # match training rows back to df_med
-    train_df_vis = df_all.iloc[train_idx].copy().reset_index(drop=True)
-    train_df_vis["color"] = train_df_vis["CELL"].astype(str).map(COLOR_MAP)
-
-    plt.figure(figsize=(6,6))
-    plt.scatter(y_train, y_pred_train,
-                c=train_df_vis["color"], s=18, alpha=0.8)
-
-    lims = [min(float(y_train.min()), float(y_pred_train.min())),
-        max(float(y_train.max()), float(y_pred_train.max()))]
-    plt.plot(lims, lims, 'k--', lw=2, label="Ideal = y=x")
-
-    plt.xlabel("True SOH (train)")
-    plt.ylabel("Predicted SOH (train)")
-    plt.title("SOH Prediction on Training Data")
-
+# ================================================================
+# Visualization and Reporting
+# ================================================================
+def plot_predictions(df, y_true, y_pred, color_map, title="SOH Prediction"):
+    plot_range = [1.45, 3.75]
+    plt.figure(figsize=(6, 6))
+    plt.scatter(y_true, y_pred, c=df["CELL"].map(color_map), s=18, alpha=0.8)
+    
+    plt.plot(plot_range, plot_range, 'k--', lw=2, label="Ideal = y=x")
+    plt.xlabel("True SOH")
+    plt.ylabel("Predicted SOH")
+    plt.title(title)
+    plt.xlim(plot_range[0], plot_range[1])
+    plt.ylim(plot_range[0], plot_range[1])
     plt.grid(True, alpha=0.3)
-    # Legend handles for cells
-    handles = [mpatches.Patch(color=COLOR_MAP[cell], label=cell)
-               for cell in sorted(train_df_vis["CELL"].unique()) if cell in COLOR_MAP]
+    handles = [mpatches.Patch(color=color_map[cell], label=cell)
+               for cell in sorted(df["CELL"].unique()) if cell in color_map]
     plt.legend(handles=handles, title="Cell", bbox_to_anchor=(1.05, 1), loc="upper left")
-
     plt.tight_layout()
     plt.show()
 
+def evaluate_and_plot(model, X, y, df_subset, title, color_map, save_path=None):
+    """Evaluate model on a given dataset and plot true vs predicted SOH."""
+    model.eval()
+    with torch.no_grad():
+        y_pred = model(torch.from_numpy(X).float().to(DEVICE)).squeeze(1).cpu().numpy()
 
-r2_train = r2_score(y_train, y_pred_train)
-print(f"Train R²: {r2_train:.4f}")
+    # --- Metrics ---
+    mae = mean_absolute_error(y, y_pred)
+    rmse = math.sqrt(mean_squared_error(y, y_pred))
+    mape = np.mean(np.abs((y - y_pred) / np.clip(np.abs(y), 1e-6, None))) * 100.0
+    r2 = r2_score(y, y_pred)
+
+    print(f"\n== {title} Results ==")
+    print(f"MAE: {mae:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.2f}%, R2: {r2:.4f}")
+
+    # --- Build dataframe for plotting ---
+    df_vis = df_subset.copy().reset_index(drop=True)
+    df_vis["y_true"] = y
+    df_vis["y_pred"] = y_pred
+    df_vis["error"] = df_vis["y_pred"] - df_vis["y_true"]
+
+    # --- Plot ---
+    plot_predictions(df_vis, df_vis["y_true"], df_vis["y_pred"], color_map, title)
+
+    # --- Optional save ---
+    if save_path:
+        df_vis.to_csv(save_path, index=False)
+        print(f"Saved: {save_path}")
+
+    return df_vis, mae, rmse, mape
+
+# ================================================================
+# Main Execution Pipeline
+# ================================================================
+def main():
+    # ---- Load Metadata and Color Map ----
+    battery_json_file = "../EVC_EIS_Data/original_data/Battery_Info_DRT.json"
+    with open(battery_json_file, "r") as f:
+        battery_metadata = json.load(f)
+    color_map = build_cell_colormap(battery_metadata)
+
+    # ---- Load Data ----
+    data_path = Path("fulldf_global_all.csv")
+    if data_path is None:
+        raise FileNotFoundError("Missing fulldf_global_all.csv.")
+    df_all = pd.read_csv(data_path, index_col=0)
+
+    # ---- Clean Data ----
+    FEATURES = ["R0", "R1", "R2", "R3", "SOC", "Temp"]
+    TARGET = "SOH"
+    REQ_COLS = ["CELL", "SOH", "SOC", "Temp"] + FEATURES
+    df_all = df_all.dropna(subset=REQ_COLS).reset_index(drop=True)
+    cond_all, all_sohbin, all_socbin = build_condition_key(df_all)
+    df_all = df_all.assign(COND_ID=cond_all, SOH_BIN=all_sohbin, SOC_BIN=all_socbin)
+
+    # ---- Split ----
+    # X_all = df_all[FEATURES].values.astype(np.float32)
+    # y_all = df_all[TARGET].values.astype(np.float32)
+    # all_idx = np.arange(len(df_all))
+
+    # X_train, X_temp, y_train, y_temp, train_idx, temp_idx = train_test_split(
+    #     X_all, y_all, all_idx, test_size=0.2, random_state=42
+    # )
+    # X_val, X_test, y_val, y_test, val_idx, test_idx = train_test_split(
+    #     X_temp, y_temp, temp_idx, test_size=0.5, random_state=42
+    # )
+    
+    # train_cells = ["CELL009", "CELL021", "CELL077"] + ["CELL032", "CELL070", "CELL101"] # all 0 & 45
+    # test_cells = ["CELL013", "CELL042", "CELL045", "CELL050", "CELL054", "CELL076", "CELL090", "CELL096"] # all 25
+    train_cells = ["CELL013","CELL045", "CELL050", "CELL054", "CELL076","CELL090", "CELL096"]
+    test_cells = ["CELL042"]
+    # train_cells = ["CELL021", "CELL077"]
+    # test_cells = ["CELL009"]
+    # train_cells = ["CELL070", "CELL101"]
+    # test_cells = ["CELL032"]
 
 
+    train_soc_ranges = []
+    test_soc_ranges = []
 
-# ----------------------------
-# 10) Test on Test set
-# ----------------------------
-with torch.no_grad():
-    y_pred_test = (model(torch.from_numpy(X_test).float().to(DEVICE))
-                  .squeeze(1).cpu().numpy())
+    X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, scaler = load_and_split_data(
+        csv_path="fulldf_global_all.csv",
+        train_cells=train_cells,
+        test_cells=test_cells,
+        split_by_soc=False,
+        train_soc_ranges=train_soc_ranges,
+        test_soc_ranges=test_soc_ranges,
+        val_ratio=0.2, 
+        features=FEATURES,
+        target=TARGET
+    )
 
-overall_mae  = mean_absolute_error(y_test, y_pred_test)
-overall_rmse = math.sqrt(mean_squared_error(y_test, y_pred_test))
-overall_mape = (np.mean(np.abs((y_test - y_pred_test) / np.clip(np.abs(y_test), 1e-6, None))) * 100.0)
+    # ---- Torch Dataloaders ----
+    train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
+    val_loader = DataLoader(TabDataset(X_val, y_val), batch_size=256, shuffle=False)
 
-print("\n== Test Set Results ==")
-print(f"MAE : {overall_mae:.5f} | RMSE: {overall_rmse:.5f} | MAPE: {overall_mape:.2f}%")
+    # ---- Model ----
+    model = MLPRegressor(in_dim=len(FEATURES), hidden=[128, 64, 32], p_drop=0.1).to(DEVICE)
 
-r2_test = r2_score(y_test, y_pred_test)
-print(f"Test R²: {r2_test:.4f}")
+    # ---- Train ----
+    model = train(model, train_loader, val_loader, epochs=400)
+    train_df_vis, train_mae, train_rmse, train_mape = evaluate_and_plot(
+        model,
+        X_train,
+        y_train,
+        df_train,
+        "SOH Prediction on Training Data",
+        color_map,
+        save_path="MLP_predictions_trainset.csv"
+    )
 
-# ----------------------------
-# 12) Save predictions & grouped reports
-# ----------------------------
-pred_df = df_all.iloc[test_idx].copy().reset_index(drop=True)
 
-# Add true/pred values
-pred_df["y_true_test"] = y_test
-pred_df["y_pred_test"] = y_pred_test
+    # ---- Validation Visualization ----
+    val_df_vis, val_mae, val_rmse, val_mape = evaluate_and_plot(
+        model,
+        X_val,
+        y_val,
+        df_val,
+        "SOH Prediction on Validation Data",
+        color_map,
+        save_path="MLP_predictions_valset.csv"
+    )
 
-# Compute errors
-pred_df["err"] = pred_df["y_pred_test"] - pred_df["y_true_test"]
-pred_df["abs_err"] = pred_df["err"].abs()
-pred_df["rel_err"] = pred_df["err"] / pred_df["y_true_test"].replace(0, np.nan)
 
-# Per-condition (over trials of same condition): how stable are predictions?
-grp_cols = ["CELL","SOH_BIN","SOC_BIN","COND_ID"]
-cond_report = (pred_df
-               .groupby(grp_cols)
-               .agg(
-                   n_trials=("y_true_test","count"),
-                   true_mean=("y_true_test","mean"),
-                   pred_mean=("y_pred_test","mean"),
-                   err_mean=("err","mean"),
-                   err_std=("err","std"),
-                   abs_err_mean=("abs_err","mean"),
-                   abs_err_std=("abs_err","std"),
-               )
-               .reset_index()
-              )
+    # # ---- Test ----
+    # with torch.no_grad():
+    #     y_pred_test = model(torch.from_numpy(X_test).float().to(DEVICE)).squeeze(1).cpu().numpy()
 
-# Per-cell summary
-cell_report = (pred_df
-               .groupby("CELL")
-               .agg(
-                   n_rows=("y_true_test","count"),
-                   mae=("abs_err","mean"),
-                   rmse=("err", lambda s: math.sqrt(np.mean(s**2))),
-                   mape=("err", lambda s: float(np.mean(np.abs(s / np.clip(pred_df.loc[s.index, 'y_true_test'].values, 1e-6, None))) * 100.0))
-               )
-               .reset_index())
+    # mae = mean_absolute_error(y_test, y_pred_test)
+    # rmse = math.sqrt(mean_squared_error(y_test, y_pred_test))
+    # mape = np.mean(np.abs((y_test - y_pred_test) / np.clip(np.abs(y_test), 1e-6, None))) * 100.0
+    # print(f"\n== Test Set Results ==")
+    # print(f"MAE: {mae:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.2f}%")
 
-pred_df.to_csv("predictions_testset.csv", index=False)
-cond_report.to_csv("report_per_condition_testset.csv", index=False)
-cell_report.to_csv("report_per_cell_testset.csv", index=False)
-print("Saved: predictions_testset.csv, report_per_condition_testset.csv, report_per_cell_testset.csv")
+    # # ---- Plot Results ----
+    # pred_df = df_test.copy().reset_index(drop=True)
+    # pred_df["y_true_test"] = y_test
+    # pred_df["y_pred_test"] = y_pred_test
+    # plot_predictions(pred_df, y_test, y_pred_test, color_map, title="SOH Prediction on Test Set")
 
-pred_df["color"] = pred_df["CELL"].map(COLOR_MAP)
+    # # ---- Save Artifacts ----
+    # pred_df.to_csv("predictions_testset.csv", index=False)
+    # print("Saved predictions_testset.csv")
+    
+    # ---- Test Visualization ----
+    test_df_vis, test_mae, test_rmse, test_mape = evaluate_and_plot(
+        model,
+        X_test,
+        y_test,
+        df_test,
+        "SOH Prediction on Test Data",
+        color_map,
+        save_path="MLP_predictions_testset.csv"
+    )
 
-# ----------------------------
-# 11) Visualization (Test Result)
-# ----------------------------
-# 1. Scatter: True vs Predicted
-plt.figure(figsize=(6,6))
-plt.scatter(pred_df["y_true_test"], pred_df["y_pred_test"],
-            c=pred_df["color"], s=18, alpha=0.55)
-lims = [min(y_all.min(), y_pred_test.min()), max(y_all.max(), y_pred_test.max())]
-plt.plot(lims, lims, 'k--', lw=2, label="Ideal = y=x")
-plt.xlabel("True SOH (test)")
-plt.ylabel("Predicted SOH (test)")
-plt.title("SOH Prediction on Testing Data")
-handles = [mpatches.Patch(color=COLOR_MAP[cell], label=cell) 
-           for cell in sorted(pred_df["CELL"].unique()) if cell in COLOR_MAP]
-plt.legend(handles=handles, title="Cell", bbox_to_anchor=(1.05, 1), loc="upper left")
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.show()
 
-# 2. Error histogram
-errors = y_pred_test - y_test
-plt.figure(figsize=(7,4))
-plt.hist(errors, bins=50, color="steelblue", edgecolor="k", alpha=0.7)
-plt.axvline(0, color="k", linestyle="--")
-plt.xlabel("Prediction Error (Pred - True) Testset")
-plt.ylabel("Frequency")
-plt.title("Distribution of Prediction Errors on Testset")
-plt.tight_layout()
-plt.show()
-
-# 3. Per-cell error distribution (boxplot)
-plt.figure(figsize=(10,5))
-sns.boxplot(data=pred_df, x="CELL", y="err",
-            showfliers=False, palette=COLOR_MAP)
-plt.axhline(0, color="k", linestyle="--")
-plt.ylabel("Error (Pred - True)")
-plt.title("Error distribution per Cell on Testset")
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.show()
-
-plt.figure(figsize=(10,5))
-sns.boxplot(data=pred_df, x="CELL", y="rel_err",
-            showfliers=False, palette=COLOR_MAP)
-plt.axhline(0, color="k", linestyle="--")
-plt.ylabel("Relative Error: (Pred - True) / True")
-plt.title("Relative Error distribution per Cell on Testset")
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.show()
-
-# # 4. Example: SOH trajectory for one cell
-# for cell_name in pred_df["CELL"].unique():
-#     df_cell = pred_df[pred_df["CELL"] == cell_name].sort_values("SOH")
-#     plt.figure(figsize=(8,5))
-#     plt.plot(df_cell["SOH"], df_cell["y_true"], "o-",  label="True SOH")
-#     plt.plot(df_cell["SOH"], df_cell["y_pred"], "s", linestyle="None", color=COLOR_MAP[cell_name], label="Predicted SOH")
-#     plt.xlabel("SOH")
-#     plt.ylabel("Value")
-#     plt.title(f"SOH Trajectory for {cell_name}")
-#     plt.legend()
-#     plt.grid(True, alpha=0.3)
-#     plt.show()
-
-# ----------------------------
-# 13) Save artifacts for later inference
-# ----------------------------
-# import joblib
-# joblib.dump(scaler, "feature_scaler.joblib")
-# torch.save(model.state_dict(), "mlp_soh.pt")
-# print("Saved: feature_scaler.joblib, mlp_soh.pt")
-
-# ----------------------------
-# 14) Inference helper
-# ----------------------------
-# def predict_soh(df_like: pd.DataFrame) -> np.ndarray:
-#     assert all(c in df_like.columns for c in FEATURES), f"Missing columns for inference: {FEATURES}"
-#     Xn = df_like[FEATURES].values.astype(np.float32)
-#     Xn = scaler.transform(Xn)
-#     with torch.no_grad():
-#         out = model(torch.from_numpy(Xn).float().to(DEVICE)).squeeze(1).cpu().numpy()
-#     return out
+if __name__ == "__main__":
+    main()
