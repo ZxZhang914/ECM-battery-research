@@ -14,15 +14,20 @@ from utils import load_cell_meta_EIS_data
 
 # For matlab version
 
-def build_global_cells_df(cells, Temp_map, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats):
+def build_global_cells_df(cells, Temp_map, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, save_filename_prefix="fulldf_global"):
     frames = []
     for cell in cells:
         # csv_path = f"Matlab/{ECM_tag}/{cell}/{cell}_{ECM_name}_trials{num_trials}_allSOH_{stats}_{soc_range}SOC.csv"
-        csv_path = f"ECM_Params_Estimation/{cell}/{ECM_name}_{obj_func}_trials{num_trials}/{cell}_{ECM_name}_trials{num_trials}_allSOH_{stats}_{soc_range}SOC.csv"
+        if remove_SOH:
+            csv_path = f"ECM_Params_Estimation/{cell}/{ECM_name}_{obj_func}_trials{num_trials}/{cell}_{ECM_name}_trials{num_trials}_allSOH_remove_{stats}_{soc_range}SOC.csv"
+        else:
+            csv_path = f"ECM_Params_Estimation/{cell}/{ECM_name}_{obj_func}_trials{num_trials}/{cell}_{ECM_name}_trials{num_trials}_allSOH_{stats}_{soc_range}SOC.csv"
 
-        if csv_path is None:
+        try:
+            df_i = pd.read_csv(csv_path)
+        except FileNotFoundError:
             print(f"[ERROR] {csv_path} not found.")
-        df_i = pd.read_csv(csv_path)
+            continue
 
         df_i = df_i.copy()
         df_i.insert(0, "Temp", Temp_map.get(cell))
@@ -31,34 +36,43 @@ def build_global_cells_df(cells, Temp_map, ECM_name, ECM_tag, obj_func, num_tria
         frames.append(df_i)
 
     df_global = pd.concat(frames, ignore_index = True)
-    df_global.to_csv(f"fulldf_global_{stats}.csv")
+    df_global.to_csv(f"{save_filename_prefix}_{stats}.csv")
+    print(f"[SUCCESS] Combined dataframe saved as {save_filename_prefix}_{stats}.csv")
+
+    return df_global
 
 
 
-def build_per_cell_merged_df_matlab(cell_name, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats="all"):
+def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats="all", remove_SOH=False, remove_SOHidx=[], data_source="Python"):
     celli_metadata, _ = load_cell_meta_EIS_data(cell_name)
     result_rows = []
-    base_folder = f"ECM_Params_Estimation/{cell_name}/{ECM_name}_{obj_func}_trials{num_trials}/"
-    # base_folder = f"Matlab/{ECM_tag}/{cell_name}/"
-    # if suffix:
-    #     base_folder = f"ECM_Params_Estimation/{battery_name}/{ECM_model_name}_{obj_func}_trials{num_trials}_{suffix}/"
+    
+    if data_source =="Matlab":
+        base_folder = f"Matlab/{ECM_tag}/{cell_name}/"
+    else:
+        base_folder = f"ECM_Params_Estimation/{cell_name}/{ECM_name}_{obj_func}_trials{num_trials}/"
     
      # All SOH states
     for soh_i in range(celli_metadata["num_soh"]):
+        if remove_SOH and ((soh_i+1) in remove_SOHidx):
+            print(f"[{cell_name}] SOH {soh_i+1} skipped.")
+            continue
         soh_data = celli_metadata["soh"][soh_i]
         for soc_i in range(soh_data["num_soc"]):
-            if soc_i < 10:
-                soc_tag = f"0{soc_i}"
+            if data_source =="Matlab":
+                if soc_i < 10:
+                    soc_tag = f"0{soc_i}"
+                else:
+                    soc_tag = f"{soc_i}"
+                file = os.path.join(
+                    base_folder,
+                    f"SOH{soh_i+1}/{cell_name}_SOH0{soh_i+1}_SOC{soc_tag}_{ECM_tag}.csv"
+                )
             else:
-                soc_tag = f"{soc_i}"
-            # file = os.path.join(
-            #     base_folder,
-            #     f"SOH{soh_i+1}/{cell_name}_SOH0{soh_i+1}_SOC{soc_tag}_{ECM_tag}.csv"
-            # )
-            file = os.path.join(
-                base_folder,
-                f"soh{soh_i+1}/{cell_name}_soh{soh_i+1}_soc{soc_i+1}_trials{num_trials}_objFunc_{obj_func}_{ECM_name}_rmOutliers.csv"
-            )
+                file = os.path.join(
+                    base_folder,
+                    f"soh{soh_i+1}/{cell_name}_soh{soh_i+1}_soc{soc_i+1}_trials{num_trials}_objFunc_{obj_func}_{ECM_name}_rmOutliers.csv"
+                )
        
             df = pd.read_csv(file)
             params_names = PARAMS_NAMES[ECM_name]
@@ -111,10 +125,16 @@ def build_per_cell_merged_df_matlab(cell_name, ECM_name, ECM_tag, obj_func, num_
         result_df = pd.DataFrame(columns=list(params_names) + ["SOH", "SOC"])
 
     # Save merged CSV
-    save_path = os.path.join(
-        base_folder,
-        f"{cell_name}_{ECM_name}_trials{num_trials}_allSOH_{stats}_{soc_range}SOC.csv",
-    )
+    if remove_SOH:
+        save_path = os.path.join(
+            base_folder,
+            f"{cell_name}_{ECM_name}_trials{num_trials}_allSOH_remove_{stats}_{soc_range}SOC.csv",
+        )
+    else:
+        save_path = os.path.join(
+            base_folder,
+            f"{cell_name}_{ECM_name}_trials{num_trials}_allSOH_{stats}_{soc_range}SOC.csv",
+        )
     result_df.to_csv(save_path, index=False)
     print(f"Merged CSV files saved to {save_path}.")
 
@@ -135,20 +155,47 @@ if __name__ == "__main__":
     # ====== CONFIGURE ======
     ROOT_DIR = Path("ECM_Params_Estimation")
     #EXPECTED_COLS = ["R0","R1","R2","R3","C1","n1","C2","n2","C3","n3","Aw","SOH","SOC"]
-    # TEMP_MAP = {
-    #     "CELL042": 25, "CELL050": 25, "CELL090": 25,
-    #     "CELL009": 0,  "CELL021": 0,  "CELL077": 0,
-    #     "CELL070": 45, "CELL101": 45, "CELL032": 45
-    # }
     TEMP_MAP = {
         "CELL042": 25, "CELL050": 25, "CELL090": 25, "CELL013":25, "CELL045":25, "CELL054":25, "CELL076":25, "CELL096":25,
         "CELL009": 0,  "CELL021": 0,  "CELL077": 0,
         "CELL070": 45, "CELL101": 45, "CELL032": 45
     }
     CELLS = TEMP_MAP.keys()
+    REMOVE_DATES = { #NOTE: Remove duplicate Capacity (see summary doc table)
+        "CELL009": ["20230424"],
+        "CELL021": [],
+        "CELL077": ["20230327"],
+        "CELL013": [],
+        "CELL042": [],
+        "CELL045": [],
+        "CELL050": [],
+        "CELL054": [],
+        "CELL076": ["20230405"],
+        "CELL090": [],
+        "CELL096": [],
+        "CELL032": [],
+        "CELL070": ["20230315"],
+        "CELL101": [],
+    }
+    REMOVE_SOHidxS = { #NOTE: Remove duplicate Capacity [index version 1-based] (see summary doc table)
+        "CELL009": [3],
+        "CELL021": [],
+        "CELL077": [2],
+        "CELL013": [],
+        "CELL042": [],
+        "CELL045": [],
+        "CELL050": [],
+        "CELL054": [],
+        "CELL076": [1],
+        "CELL090": [],
+        "CELL096": [],
+        "CELL032": [],
+        "CELL070": [2],
+        "CELL101": [],
+    }
     # =======================
     for cell in CELLS:
-        build_per_cell_merged_df_matlab(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats)
-    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats)
+        build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
+    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix="newdf_global")
 
     

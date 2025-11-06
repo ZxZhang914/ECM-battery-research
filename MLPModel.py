@@ -93,17 +93,18 @@ class EarlyStopper:
             model.load_state_dict(self.state)
 
 
-def train(model, train_loader, val_loader, epochs=400):
+def train(model, train_loader, val_loader=None, epochs=400):
     criterion = nn.MSELoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=1e-2)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=8)
-
     early = EarlyStopper(patience=30, min_delta=1e-5)
-    for ep in range(1, epochs+1):
+
+    for ep in range(1, epochs + 1):
         model.train()
         running = 0.0
         for xb, yb in train_loader:
-            xb = xb.to(DEVICE); yb = yb.to(DEVICE)
+            xb = xb.to(DEVICE)
+            yb = yb.to(DEVICE)
             optimizer.zero_grad()
             pred = model(xb)
             loss = criterion(pred, yb)
@@ -113,21 +114,27 @@ def train(model, train_loader, val_loader, epochs=400):
             running += loss.item() * xb.size(0)
 
         train_loss = running / len(train_loader.dataset)
-        val_mae, val_rmse, val_mape = evaluate(val_loader, model)
 
-        old_lr = optimizer.param_groups[0]['lr']
-        scheduler.step(val_mae)
-        new_lr = optimizer.param_groups[0]['lr']
-        if new_lr != old_lr:
-            print(f"[LR] reduced: {old_lr:.6f} → {new_lr:.6f}")
+        # ✅ Validation step (optional)
+        if val_loader is not None:
+            val_mae, val_rmse, val_mape = evaluate(val_loader, model)
+            scheduler.step(val_mae)
 
-        if ep % 10 == 0 or ep == 1:
-            print(f"Epoch {ep:03d} | train_RMSE: {math.sqrt(train_loss):.4f} | "
-                  f"val_MAE: {val_mae:.4f} | val_RMSE: {val_rmse:.4f} | val_MAPE: {val_mape:.2f}%")
+            if ep % 10 == 0 or ep == 1:
+                print(f"Epoch {ep:03d} | train_RMSE: {math.sqrt(train_loss):.4f} | "
+                      f"val_MAE: {val_mae:.4f} | val_RMSE: {val_rmse:.4f} | val_MAPE: {val_mape:.2f}%")
 
-        if not early.step(val_mae, model):
-            print(f"Early stop at epoch {ep}. Best val MAE: {early.best:.4f}")
-            break
+            if not early.step(val_mae, model):
+                print(f"Early stop at epoch {ep}. Best val MAE: {early.best:.4f}")
+                break
+        else:
+            # ✅ No validation — just print training loss and step scheduler on it
+            scheduler.step(train_loss)
+            if ep % 10 == 0 or ep == 1:
+                print(f"Epoch {ep:03d} | train_RMSE: {math.sqrt(train_loss):.4f}")
 
-    early.load_best(model)
+    # ✅ Load best weights if early stopping was used (and val_loader existed)
+    if val_loader is not None:
+        early.load_best(model)
+
     return model
