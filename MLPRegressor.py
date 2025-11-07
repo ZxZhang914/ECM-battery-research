@@ -64,7 +64,6 @@ def build_condition_key(df: pd.DataFrame, soh_round=3, soc_round=1):
     key = df["CELL"].astype(str) + "|" + soh_bin.astype(str) + "|" + soc_bin.astype(str)
     return key, soh_bin, soc_bin
 
-### Functional Data loader and Split
 
 def parse_soc_range(expr: str) -> Tuple[float, float, bool, bool]:
     """
@@ -150,459 +149,6 @@ def load_and_split_data(
 
     return X_train, X_val, X_test, y_train, y_val, y_test, df_train_split, df_val_split, df_test, scaler
 
-def split_by_soc_one_selection_else_to_test(
-    df: pd.DataFrame,
-    train_cells: List[str],
-    train_soc_ranges: List[Tuple[float, float]],
-    features: List[str] = ["R0", "R1", "R2", "R3"],
-    target: str = "SOH",
-    val_ratio: float = 0.2,
-    random_state: int = 42,
-):
-    """
-    For each training cell and each SOH:
-      - For each SOC range, randomly select ONE SOC (if any exist within that range)
-      - Add all samples for (CELL, SOH, chosen SOC) to training set
-    Unselected SOCs and all other cells become the test set.
-    Split training data 80/20 into train/validation.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataset with columns ["CELL", "SOH", "SOC"] at least.
-    train_cells : list of str
-        List of cell names to use for training.
-    train_soc_ranges : list of (float, float)
-        SOC ranges to consider for possible selection.
-    features : list of str
-        Feature column names.
-    target : str
-        Target column name.
-    val_ratio : float
-        Fraction of training data for validation.
-    random_state : int
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, selection_df
-    """
-    random.seed(random_state)
-    np.random.seed(random_state)
-
-    required_cols = {"CELL", "SOH", "SOC"}
-    if not required_cols.issubset(df.columns):
-        raise ValueError(f"DataFrame must include columns: {required_cols}")
-
-    df_train_parts = []
-    selection_log = []
-
-    print("\n===== Auto Split: Selected SOCs for Training =====")
-
-    selected_indices = set()
-
-    # Outer loop: cells
-    for cell in train_cells:
-        df_cell = df[df["CELL"] == cell]
-        if df_cell.empty:
-            print(f"Warning: No data for training cell {cell}")
-            continue
-
-        # Middle loop: SOHs
-        for soh, df_soh in df_cell.groupby("SOH"):
-            # Inner loop: SOC ranges
-            for (low, high) in train_soc_ranges:
-                df_range = df_soh[(df_soh["SOC"] >= low) & (df_soh["SOC"] <= high)]
-                if df_range.empty:
-                    continue
-
-                unique_socs = sorted(df_range["SOC"].unique())
-                chosen_soc = random.choice(unique_socs)
-
-                df_selected = df_soh[df_soh["SOC"] == chosen_soc].copy()
-                df_train_parts.append(df_selected)
-                selected_indices.update(df_selected.index)
-
-                selection_log.append((cell, soh, (low, high), chosen_soc))
-                print(f"Cell={cell}, SOH={soh:.3f}, Range=({low},{high}) → SOC={chosen_soc} "
-                      f"({len(df_selected)} samples)")
-
-    # Combine selected training samples
-    df_train_full = pd.concat(df_train_parts, ignore_index=False) if df_train_parts else pd.DataFrame(columns=df.columns)
-
-    # Test = all remaining data (unselected SOCs + non-train cells)
-    selected_idx_list = list(selected_indices)
-    df_test = df.drop(index=selected_idx_list).copy()
-
-    # Split train into train/val
-    if len(df_train_full) > 1:
-        df_train, df_val = train_test_split(df_train_full, test_size=val_ratio, random_state=random_state, shuffle=True)
-    else:
-        df_train, df_val = df_train_full.copy(), pd.DataFrame(columns=df.columns)
-
-    # --- Convert to arrays ---
-    def to_arrays(dframe):
-        if dframe.empty:
-            n_feat = len(features)
-            return np.zeros((0, n_feat)), np.zeros((0,))
-        return (
-            dframe[features].values.astype(np.float32),
-            dframe[target].values.astype(np.float32),
-        )
-
-    X_train, y_train = to_arrays(df_train)
-    X_val, y_val = to_arrays(df_val)
-    X_test, y_test = to_arrays(df_test)
-
-    print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
-
-    # Selection log
-    selection_df = pd.DataFrame(selection_log, columns=["CELL", "SOH", "SOC_range", "Chosen_SOC"])
-    return X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, selection_df
-
-
-# For SOC-based splitting with one random SOC per range
-def split_by_soc_ranges_random_one_per_range_with_val(
-    df: pd.DataFrame,
-    train_soc_list: List[Tuple[float, float]],
-    features: List[str] = ["R0", "R1", "R2", "R3"],
-    target: str = "SOH",
-    val_ratio: float = 0.2,
-    random_state: int = 42,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-           pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Split data based on SOC ranges.
-    For each SOC range in train_soc_list, randomly select ONE SOC value that lies in the range.
-    All rows with those selected SOCs go to training (later split 80/20 → train/val),
-    and all remaining SOCs in the dataframe go to testing.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe with 'SOC' and 'SOH' columns.
-    train_soc_list : list of (low, high)
-        SOC ranges to consider for potential training SOCs.
-    features : list of str
-        Feature column names.
-    target : str
-        Target column name.
-    val_ratio : float
-        Fraction of training data used as validation.
-    random_state : int
-        Random seed.
-
-    Returns
-    -------
-    X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test
-    """
-
-    random.seed(random_state)
-    np.random.seed(random_state)
-
-    if "SOC" not in df.columns or "SOH" not in df.columns:
-        raise ValueError("DataFrame must include 'SOC' and 'SOH' columns.")
-
-    # --- Step 1: Find candidate SOCs in each range ---
-    candidate_socs = set()
-    for (low, high) in train_soc_list:
-        socs_in_range = df.loc[(df["SOC"] >= low) & (df["SOC"] <= high), "SOC"].unique()
-        candidate_socs.update(socs_in_range)
-
-    candidate_socs = sorted(candidate_socs)
-    if not candidate_socs:
-        raise ValueError("No SOCs found in any of the specified ranges.")
-
-    # --- Step 2: Randomly pick one SOC per range ---
-    selected_socs = []
-    for (low, high) in train_soc_list:
-        socs_in_range = [s for s in candidate_socs if low <= s <= high]
-        if len(socs_in_range) == 0:
-            print(f"⚠️ No SOC found in range ({low}, {high})")
-            continue
-        chosen_soc = random.choice(socs_in_range)
-        selected_socs.append(chosen_soc)
-        print(f"Selected training SOC from range ({low}, {high}): {chosen_soc}")
-
-    selected_socs = sorted(set(selected_socs))
-
-    # --- Step 3: Assign train/test based on SOC ---
-    df_train_full = df[df["SOC"].isin(selected_socs)].copy()
-    df_test = df[~df["SOC"].isin(selected_socs)].copy()
-
-    # --- Step 4: Split train into train/val ---
-    if len(df_train_full) > 1:
-        df_train, df_val = train_test_split(
-            df_train_full, test_size=val_ratio, random_state=random_state, shuffle=True
-        )
-    else:
-        df_train, df_val = df_train_full.copy(), pd.DataFrame(columns=df.columns)
-
-    # --- Step 5: Print group info ---
-    def print_group_info(label, dframe):
-        if dframe.empty:
-            print(f"\n{label}: [empty]")
-            return
-        grouped = dframe.groupby(["SOH", "SOC"]).size().reset_index(name="count")
-        print(f"\n{label} (total {len(dframe)} samples):")
-        print(grouped.to_string(index=False))
-
-    print("\n===== SOC-based Split Summary =====")
-    print(f"Training SOCs: {selected_socs}")
-    print_group_info("Train", df_train)
-    print_group_info("Validation", df_val)
-    print_group_info("Test", df_test)
-
-    # --- Step 6: Build numpy arrays ---
-    def to_arrays(dframe):
-        if dframe.empty:
-            n_feat = len(features)
-            return np.zeros((0, n_feat)), np.zeros((0,))
-        return (
-            dframe[features].values.astype(np.float32),
-            dframe[target].values.astype(np.float32),
-        )
-
-    X_train, y_train = to_arrays(df_train)
-    X_val, y_val = to_arrays(df_val)
-    X_test, y_test = to_arrays(df_test)
-
-    print("\n===== Summary =====")
-    print(f"Train samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
-    print(f"Unique SOCs in training: {selected_socs}")
-    print(f"Unique SOCs in test: {sorted(df_test['SOC'].unique())}")
-
-    return X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test
-
-def split_by_cell_and_rnd_one_soc_per_ranges(
-    df: pd.DataFrame,
-    train_cells: List[str],
-    test_cells: List[str],
-    train_soc_ranges: List[Tuple[float, float]],
-    features: List[str] = ["R0", "R1", "R2", "R3"],
-    target: str = "SOH",
-    val_ratio: float = 0.2,
-    random_state: int = 42,
-):
-    """
-    Split data by cell and SOC ranges.
-
-    For each train cell and each SOC range:
-      - randomly select one SOC value inside the range (if available)
-      - use all rows from that SOC value as training
-    All data from test_cells go to the test set.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataset containing at least ["CELL", "SOC", "SOH"].
-    train_cells : list of str
-        Cell names to be used for training.
-    test_cells : list of str
-        Cell names to be used for testing.
-    train_soc_ranges : list of (float, float)
-        List of SOC ranges for selecting one SOC per range per cell. tuple (a,b) represents range [a,b)
-    features : list of str
-        Feature column names.
-    target : str
-        Target column name.
-    val_ratio : float
-        Fraction of training data used for validation.
-    random_state : int
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test
-    """
-    random.seed(random_state)
-    np.random.seed(random_state)
-
-    required_cols = {"CELL", "SOC", "SOH"}
-    if not required_cols.issubset(df.columns):
-        raise ValueError(f"DataFrame must include columns: {required_cols}")
-
-    df_train_list = []
-    df_test = df[df["CELL"].isin(test_cells)].copy()
-
-    print("\n===== Per-Cell SOC-based Splitting =====")
-
-    for cell in train_cells:
-        df_cell = df[df["CELL"] == cell]
-        if df_cell.empty:
-            print(f"⚠️ No data found for training cell {cell}")
-            continue
-
-        print(f"\nProcessing training cell: {cell}")
-        for (low, high) in train_soc_ranges:
-            df_range = df_cell[(df_cell["SOC"] >= low) & (df_cell["SOC"] < high)]
-            if df_range.empty:
-                print(f"  ⚠️ No SOCs found in range ({low}, {high}) for {cell}")
-                continue
-
-            unique_socs = sorted(df_range["SOC"].unique())
-            chosen_soc = random.choice(unique_socs)
-
-            df_train_part = df_range[df_range["SOC"] == chosen_soc].copy()
-            df_train_list.append(df_train_part)
-
-            print(f"  Selected SOC {chosen_soc} for range ({low}, {high})")
-            print(f"    -> {len(df_train_part)} samples (SOH, SOC) groups:")
-            print(df_train_part.groupby(["SOH", "SOC"]).size().reset_index(name="count").to_string(index=False))
-
-    # Combine all training selections
-    df_train_full = pd.concat(df_train_list, ignore_index=True) if df_train_list else pd.DataFrame(columns=df.columns)
-
-    # Split into train / validation
-    from sklearn.model_selection import train_test_split
-    if len(df_train_full) > 1:
-        df_train, df_val = train_test_split(df_train_full, test_size=val_ratio, random_state=random_state, shuffle=True)
-    else:
-        df_train, df_val = df_train_full.copy(), pd.DataFrame(columns=df.columns)
-
-    # --- Summary printout ---
-    def print_group_info(label, dframe):
-        if dframe.empty:
-            print(f"\n{label}: [empty]")
-            return
-        grouped = dframe.groupby(["CELL", "SOH", "SOC"]).size().reset_index(name="count")
-        print(f"\n{label} (total {len(dframe)} samples):")
-        print(grouped.to_string(index=False))
-
-    print("\n===== Summary =====")
-    print_group_info("Train", df_train)
-    print_group_info("Validation", df_val)
-    print_group_info("Test", df_test)
-
-    # --- Convert to numpy arrays ---
-    def to_arrays(dframe):
-        if dframe.empty:
-            n_feat = len(features)
-            return np.zeros((0, n_feat)), np.zeros((0,))
-        return (
-            dframe[features].values.astype(np.float32),
-            dframe[target].values.astype(np.float32),
-        )
-
-    X_train, y_train = to_arrays(df_train)
-    X_val, y_val = to_arrays(df_val)
-    X_test, y_test = to_arrays(df_test)
-
-    print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
-
-    return X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test
-
-
-def split_by_cell_soh_soc_one_selection(
-    df: pd.DataFrame,
-    train_cells: List[str],
-    test_cells: List[str],
-    train_soc_ranges: List[Tuple[float, float]],
-    features: List[str] = ["R0", "R1", "R2", "R3"],
-    target: str = "SOH",
-    val_ratio: float = 0.2,
-    random_state: int = 42,
-):
-    """
-    For each training cell and each SOH:
-      - For each SOC range, randomly select ONE SOC (if any exist within that range)
-      - Add all samples for (CELL, SOH, chosen SOC) to training set
-    Ignore unselected SOCs from training cells.
-    Use ALL data from test_cells as test set.
-    Split training data 80/20 into train/validation.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataset with columns ["CELL", "SOH", "SOC"] at least.
-    train_cells : list of str
-        List of cell names to use for training.
-    test_cells : list of str
-        List of cell names to use for testing (full data used).
-    train_soc_ranges : list of (float, float)
-        SOC ranges to consider for possible selection.
-    features : list of str
-        Feature column names.
-    target : str
-        Target column name.
-    val_ratio : float
-        Fraction of training data for validation.
-    random_state : int
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test
-    """
-    random.seed(random_state)
-    np.random.seed(random_state)
-
-    required_cols = {"CELL", "SOH", "SOC"}
-    if not required_cols.issubset(df.columns):
-        raise ValueError(f"DataFrame must include columns: {required_cols}")
-
-    df_train_parts = []
-    selection_log = []
-
-    print("\n===== Multi-Range (CELL, SOH, SOC) Selection =====")
-
-    # Outer loop: cells
-    for cell in train_cells:
-        df_cell = df[df["CELL"] == cell]
-        if df_cell.empty:
-            print(f"⚠️ No data for training cell {cell}")
-            continue
-
-        # Middle loop: SOHs
-        for soh, df_soh in df_cell.groupby("SOH"):
-            # Inner loop: SOC ranges
-            for (low, high) in train_soc_ranges:
-                df_range = df_soh[(df_soh["SOC"] >= low) & (df_soh["SOC"] <= high)]
-                if df_range.empty:
-                    continue
-
-                unique_socs = sorted(df_range["SOC"].unique())
-                chosen_soc = random.choice(unique_socs)
-                df_selected = df_soh[df_soh["SOC"] == chosen_soc].copy()
-                df_train_parts.append(df_selected)
-
-                selection_log.append((cell, soh, (low, high), chosen_soc))
-
-                print(f"Cell={cell}, SOH={soh:.3f}, Range=({low},{high}) → SOC={chosen_soc} "
-                      f"({len(df_selected)} samples)")
-
-    # Combine selected training samples
-    df_train_full = pd.concat(df_train_parts, ignore_index=True) if df_train_parts else pd.DataFrame(columns=df.columns)
-
-    # Split into train/val
-    if len(df_train_full) > 1:
-        df_train, df_val = train_test_split(df_train_full, test_size=val_ratio, random_state=random_state, shuffle=True)
-    else:
-        df_train, df_val = df_train_full.copy(), pd.DataFrame(columns=df.columns)
-
-    # Test set = all test cells’ data
-    df_test = df[df["CELL"].isin(test_cells)].copy()
-
-    # --- Convert to arrays ---
-    def to_arrays(dframe):
-        if dframe.empty:
-            n_feat = len(features)
-            return np.zeros((0, n_feat)), np.zeros((0,))
-        return (
-            dframe[features].values.astype(np.float32),
-            dframe[target].values.astype(np.float32),
-        )
-
-    X_train, y_train = to_arrays(df_train)
-    X_val, y_val = to_arrays(df_val)
-    X_test, y_test = to_arrays(df_test)
-
-    print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
-
-    # Return also the selection log for reproducibility
-    selection_df = pd.DataFrame(selection_log, columns=["CELL", "SOH", "SOC_range", "Chosen_SOC"])
-    return X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, selection_df
-
 # ================================================================
 # Visualization and Reporting
 # ================================================================
@@ -615,21 +161,21 @@ def plot_predictions(df, y_true, y_pred, color_map, title="SOH Prediction", save
     # color_map = {cell: cmap(i) for i, cell in enumerate(unique_cells)}
     # #####
 
-    plt.scatter(y_true, y_pred, c=df["CELL"].map(color_map), s=18, alpha=0.8)
+    plt.scatter(y_true, y_pred, c=df["CELL"].map(color_map), s=10, alpha=0.8)
     
     plt.plot(plot_range, plot_range, 'k--', lw=2, label="Ideal = y=x")
     plt.xlabel("True SOH")
     plt.ylabel("Predicted SOH")
     plt.title(title)
-    plt.xlim(plot_range[0], plot_range[1])
-    plt.ylim(plot_range[0], plot_range[1])
+    # plt.xlim(plot_range[0], plot_range[1])
+    # plt.ylim(plot_range[0], plot_range[1])
     plt.grid(True, alpha=0.3)
     handles = [mpatches.Patch(color=color_map[cell], label=cell)
                for cell in sorted(df["CELL"].unique()) if cell in color_map]
     plt.legend(handles=handles, title="Cell", bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.tight_layout()
     plt.axis("square")
-    savepath = os.path.join(save_dir, f"test{title_CELL}_{title_dataset}.png")
+    savepath = os.path.join(save_dir, f"allTemp_{title_dataset}.png")
     plt.savefig(savepath, dpi=300)
     plt.close()
 
@@ -657,12 +203,114 @@ def evaluate_and_plot(model, X, y, df_subset, title, color_map, save_path=None, 
     # --- Plot ---
     plot_predictions(df_vis, df_vis["y_true"], df_vis["y_pred"], color_map, title, plot_save_dir, plot_title_CELL, plot_title_dataset)
 
-    # --- Optional save ---
+    # --- save ---
     if save_path:
         df_vis.to_csv(save_path, index=False)
         print(f"Saved: {save_path}")
 
     return df_vis, mae, rmse, mape
+
+
+# ================================================================
+# Aggregate Middle 50% by Predicted SOH (per CELL, SOH, SOC)
+# ================================================================
+def compute_group_performance(df_split):
+    required_cols = ["CELL", "SOH", "SOC", "y_pred"]
+    if not all(c in df_split.columns for c in required_cols):
+        raise ValueError(f"Missing required columns in df_split: {required_cols}")
+
+    group_results = []
+
+    for (cell, soh, soc), sub in df_split.groupby(["CELL", "SOH", "SOC"]):
+        if len(sub) < 2:
+            continue  # skip very small groups
+
+        sub_sorted = sub.sort_values("y_pred").reset_index(drop=True)
+        lower = np.percentile(sub_sorted["y_pred"], 25)
+        upper = np.percentile(sub_sorted["y_pred"], 75)
+        mid = sub_sorted[(sub_sorted["y_pred"] >= lower) & (sub_sorted["y_pred"] <= upper)]
+
+        # Fallback if empty (e.g., identical predictions)
+        if mid.empty:
+            if len(sub_sorted) >= 2:
+                mid = sub_sorted.iloc[[len(sub_sorted)//2 - 1, len(sub_sorted)//2]]
+            else:
+                mid = sub_sorted.copy()
+
+        group_results.append({
+            "CELL": cell,
+            "SOH": soh,
+            "SOC": soc,
+            "SOH_mean": mid["SOH"].mean(),
+            "Pred_mean": mid["y_pred"].mean(),
+            "Pred_std": mid["y_pred"].std(ddof=0),
+            "N_mid": len(mid)
+        })
+
+    df_perf = pd.DataFrame(group_results)
+    return df_perf
+
+
+def eval_model(df_split, name, aggregate=False):
+    """Evaluate model performance on either raw or aggregated predictions."""
+    if aggregate:
+        mask = df_split["SOH_mean"].notna() & df_split["Pred_mean"].notna()
+        y_true = df_split.loc[mask, "SOH_mean"]
+        y_pred = df_split.loc[mask, "Pred_mean"]
+    else:
+        mask = df_split["SOH"].notna() & df_split["y_pred"].notna()
+        y_true = df_split.loc[mask, "SOH"]
+        y_pred = df_split.loc[mask, "y_pred"]
+
+    if mask.any():
+        mae = mean_absolute_error(y_true, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        mape = np.mean(np.abs((y_true - y_pred) / np.clip(np.abs(y_true), 1e-6, None))) * 100
+        r2 = r2_score(y_true, y_pred)
+
+        print(f"\n=== {name} Performance ===")
+        print(f"MAE  = {mae:.4f}")
+        print(f"RMSE = {rmse:.4f}")
+        print(f"MAPE = {mape:.2f}%")
+        print(f"R2   = {r2:.4f}")
+    else:
+        print(f"\nNo valid data to evaluate for {name}.")
+
+
+def plot_group_summary(df_perf, name, color_map=None, save_dir="MLP_plots/allTemp/features_allRC"):
+    plt.figure(figsize=(6, 6))
+    plot_range = [1.45, 3.75]
+    if "CELL" in df_perf.columns and color_map is not None:
+        unique_cells = df_perf["CELL"].unique()
+        for cell in unique_cells:
+            sub = df_perf[df_perf["CELL"] == cell]
+            plt.scatter(
+                sub["SOH_mean"], sub["Pred_mean"],
+                s=10, alpha=0.9, label=cell,
+                color=color_map.get(cell, None)
+            )
+    else:
+        plt.scatter(
+            df_perf["SOH_mean"], df_perf["Pred_mean"],
+            s=10, alpha=0.9, color="tab:blue", label=name
+        )
+    
+    plt.plot(plot_range, plot_range, "r--", label="y=x")
+
+    plt.xlabel("True SOH")
+    plt.ylabel("Predicted SOH")
+    plt.title(f"SOH Prediction on {name} Data (MLP)")
+    plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left", title="CELLs")
+    plt.grid(alpha=0.3)
+    # plt.xlim(plot_range[0], plot_range[1])
+    # plt.ylim(plot_range[0], plot_range[1])
+    plt.axis("equal")
+    plt.axis("square")
+    plt.tight_layout()
+    savepath = os.path.join(save_dir, f"allTemp_{name}_agg.png")
+    plt.savefig(savepath, dpi=300)
+    plt.close()
+    print(f"Saved plot: {savepath}")
 
 # ================================================================
 # Main Execution Pipeline
@@ -677,16 +325,16 @@ def main():
     # ---- Load Data ----
     data_path = Path("fulldf_global_all.csv")
     if data_path is None:
-        raise FileNotFoundError("Missing selectdf_global_all.csv.")
+        raise FileNotFoundError("Missing fulldf_global_all.csv.")
     df_all = pd.read_csv(data_path, index_col=0)
     # df_all = df_all[df_all["Temp"] == 25] #NOTE: Select 25 only
 
     # ---- Clean Data ----
-    FEATURES = ["R0", "R1", "R2", "R3", "SOC"] #NOTE: Remove Temp for single Temp case
-    # FEATURES = ["R0", "R1", "R2", "R3", "SOC", "Temp"]
+    # FEATURES = ["R0", "R1", "R2", "R3", "SOC"] #NOTE: Remove Temp for single Temp case
+    FEATURES = ["R0", "R1", "R2", "R3", "Temp"]
 
     TARGET = "SOH"
-    REQ_COLS = ["CELL", "SOH", "SOC", "Temp"] + FEATURES
+    REQ_COLS = ["CELL", "SOH", "SOC", "tau1", "tau2", "tau3", "Aw", "Temp"] + FEATURES
     df_all = df_all.dropna(subset=REQ_COLS).reset_index(drop=True)
     cond_all, all_sohbin, all_socbin = build_condition_key(df_all)
     df_all = df_all.assign(COND_ID=cond_all, SOH_BIN=all_sohbin, SOC_BIN=all_socbin)
@@ -709,19 +357,21 @@ def main():
     # df_test  = df_all.iloc[test_idx].reset_index(drop=True)
     # print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
     
-    # plot_save_dir = "MLP_plots/allTemp/"
+    # plot_save_dir = "MLP_plots/allTemp/Rs_SOC_Temp"
     # if not os.path.exists(plot_save_dir):
     #     os.makedirs(plot_save_dir)
-
-    ####### By CELL Split DATA ########
+    
+     ####### By CELL Split DATA ########
     # train_cells = ["CELL009", "CELL021", "CELL077"] + ["CELL032", "CELL070", "CELL101"] # all 0 & 45
     # test_cells = ["CELL013", "CELL042", "CELL045", "CELL050", "CELL054", "CELL076", "CELL090", "CELL096"] # all 25
     # train_cells = [ "CELL013","CELL045","CELL042","CELL054","CELL076","CELL090", "CELL096"]
     # test_cells = ["CELL050",]
     # train_cells = ["CELL009","CELL021", ]
     # test_cells = ["CELL077"]
-    train_cells = ["CELL032", "CELL070"]
-    test_cells = ["CELL101"]
+    # train_cells = ["CELL032", "CELL070"]
+    # test_cells = ["CELL101"]
+    train_cells = ["CELL076", "CELL013", "CELL096", "CELL050", "CELL042",  "CELL045", "CELL077", "CELL021", "CELL032", "CELL070"]
+    test_cells  = ["CELL090", "CELL054", "CELL009", "CELL101"]  
 
 
     train_soc_ranges = []
@@ -738,66 +388,9 @@ def main():
         features=FEATURES,
         target=TARGET
     )
-    plot_save_dir = "MLP_plots/leave_one_out_test45/"
+    plot_save_dir = "MLP_plots/AllTemp_Leaveout/Rs_Temp"
     if not os.path.exists(plot_save_dir):
         os.makedirs(plot_save_dir)
-
-
-    ####### By SOC range Split DATA ########
-    # train_cells = ["CELL013", "CELL042", "CELL045", "CELL050", "CELL054", "CELL076","CELL090","CELL096"] # all 25 
-    # train_soc_ranges = [(0.25,0.50), (0.50, 0.80), (0.80,1)]
-
-    # X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, selection_df = split_by_soc_one_selection_else_to_test(
-    #     df=df_all,
-    #     train_cells=train_cells,
-    #     train_soc_ranges=train_soc_ranges,
-    #     features=FEATURES,
-    #     target="SOH",
-    #     val_ratio=0.2,
-    #     random_state=42,
-    # )
-    # # print("\n=== Selection Log ===")
-    # # print(selection_df)
-
-    # plot_save_dir = "MLP_plots/Split_bySOC/"
-    # if not os.path.exists(plot_save_dir):
-    #     os.makedirs(plot_save_dir)
-
-    ####### By CELL and SOC ranges (random one) Split DATA ########
-    # train_cells = ["CELL042", "CELL050", "CELL054", "CELL076", "CELL090", "CELL096"] # all 25 (exclude CELL045)
-    # train_cells = [ "CELL013", "CELL042", "CELL045", "CELL050","CELL054",  "CELL076","CELL090",] # all 25 
-
-    # test_cells = ["CELL096"]
-    # train_soc_ranges = [(0.25,0.50), (0.50, 0.80), (0.80,1)]
-
-    # 1. Random select one soc across all SOH
-    # X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test = \
-    #     split_by_cell_and_rnd_one_soc_per_ranges(
-    #         df=df_all,
-    #         train_cells=train_cells,
-    #         test_cells=test_cells,
-    #         train_soc_ranges=train_soc_ranges,
-    #         features=FEATURES,
-    #         target=TARGET,
-    #         val_ratio=0.2,
-    #         random_state=42
-    #     )
-    
-    # 2. Random select one soc per SOH
-    # X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, selection_df = \
-    # split_by_cell_soh_soc_one_selection(
-    #     df=df_all,
-    #     train_cells=train_cells,
-    #     test_cells=test_cells,
-    #     train_soc_ranges=train_soc_ranges,
-    #     features=FEATURES,
-    #     target=TARGET,
-    #     val_ratio=0.2,
-    #     random_state=42,
-    # )
-    # plot_save_dir = "MLP_plots/leave_one_out_test25/select_SOC"
-    # if not os.path.exists(plot_save_dir):
-    #     os.makedirs(plot_save_dir)
 
     # ---- Torch Dataloaders ----
     train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
@@ -815,15 +408,12 @@ def main():
         df_train,
         "SOH Prediction on Training Data",
         color_map,
-        save_path="MLP_predictions_trainset.csv",
+        save_path=f"{plot_save_dir}/MLP_predictions_trainset.csv",
         plot_save_dir=plot_save_dir,
-        plot_title_CELL=test_cells[0],
+        plot_title_CELL="",
         plot_title_dataset="train"
     )
 
-
-
-    #TODO: CHANGE PATHs
     # ---- Validation Visualization ----
     val_df_vis, val_mae, val_rmse, val_mape = evaluate_and_plot(
         model,
@@ -832,9 +422,9 @@ def main():
         df_val,
         "SOH Prediction on Validation Data",
         color_map,
-        save_path="MLP_predictions_valset.csv",
+        save_path=f"{plot_save_dir}/MLP_predictions_valset.csv",
         plot_save_dir=plot_save_dir,
-        plot_title_CELL=test_cells[0],
+        plot_title_CELL="",
         plot_title_dataset="val"
     )
     
@@ -846,12 +436,29 @@ def main():
         df_test,
         "SOH Prediction on Test Data",
         color_map,
-        save_path="MLP_predictions_testset.csv",
+        save_path=f"{plot_save_dir}/MLP_predictions_testset.csv",
         plot_save_dir=plot_save_dir,
-        plot_title_CELL=test_cells[0],
+        plot_title_CELL="",
         plot_title_dataset="test"
     )
 
+    # ================================================================
+    # Compute and visualize aggregated results
+    # ================================================================
+    df_val_performance = compute_group_performance(val_df_vis)
+    df_test_performance = compute_group_performance(test_df_vis)
+
+    # Save
+    df_val_performance.to_csv(f"{plot_save_dir}/MLP_predictions_valset_aggregated.csv", index=False)
+    df_test_performance.to_csv(f"{plot_save_dir}/MLP_predictions_testset_aggregated.csv", index=False)
+
+    # Evaluate aggregated performance
+    eval_model(df_val_performance, "Validation (Aggregated)", aggregate=True)
+    eval_model(df_test_performance, "Test (Aggregated)", aggregate=True)
+
+    # Plot aggregated performance
+    plot_group_summary(df_val_performance, "Validation", color_map, save_dir=plot_save_dir)
+    plot_group_summary(df_test_performance, "Test", color_map, save_dir=plot_save_dir)
 
 if __name__ == "__main__":
     main()

@@ -75,7 +75,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
                 )
        
             df = pd.read_csv(file)
-            params_names = PARAMS_NAMES[ECM_name]
+            params_names = EXPANDED_PARAMS_NAMES[ECM_name]
 
             # Build SOC/SOH scalars
             soh_val = soh_data["capacity"]
@@ -121,7 +121,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
     if result_rows:
         result_df = pd.concat(result_rows, ignore_index=True)
     else:
-        params_names = PARAMS_NAMES[ECM_name]
+        params_names = EXPANDED_PARAMS_NAMES[ECM_name]
         result_df = pd.DataFrame(columns=list(params_names) + ["SOH", "SOC"])
 
     # Save merged CSV
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     obj_func = "RMSE"
     num_trials = 100
     soc_range = "G25"
-    stats = "median"
+    stats = "all"
     # ====== CONFIGURE ======
     ROOT_DIR = Path("ECM_Params_Estimation")
     #EXPECTED_COLS = ["R0","R1","R2","R3","C1","n1","C2","n2","C3","n3","Aw","SOH","SOC"]
@@ -194,8 +194,13 @@ if __name__ == "__main__":
         "CELL101": [],
     }
     # =======================
+    # for cell in CELLS:
+    #     build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
+    # build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix="newdf_global")
+    
+    # Non-remove version
     for cell in CELLS:
-        build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
-    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix="newdf_global")
+        build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, remove_SOHidx=REMOVE_SOHidxS[cell])
+    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, save_filename_prefix="fulldf_global")
 
     

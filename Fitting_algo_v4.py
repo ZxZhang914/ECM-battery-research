@@ -62,40 +62,52 @@ ECM_NUM_RCS = {
 }
 
 
+EXPANDED_PARAMS_NAMES = {
+    "v3CM1": ["R0", "R1", "C1", "n1", "tau1", "freq1"], # v3CM1
+    "v3CM2": ["R0", "R1", "R2", "C1", "n1", "C2", "n2", "tau1", "freq1", "tau2", "freq2"], # v3CM2
+    "v3CM3": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM3
+    "v3CM4": ["R0", "R1", "R2", "R3", "R4", "C1", "n1", "C2", "n2", "C3", "n3", "C4", "n4", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3", "tau4", "freq4"], # v3CM4
+    "v3CM5": ["R0", "R1", "C1", "n1", "Aw"], # v3CM5
+    "v3CM6": ["R0", "R1", "R2", "C1", "n1", "C2", "n2", "Aw", "tau1", "freq1"], # v3CM6
+    "v3CM7": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw", "tau1", "freq1", "tau2", "freq2"], # v3CM7
+    "v3CM8": ["R0", "R1", "R2", "R3", "R4", "C1", "n1", "C2", "n2", "C3", "n3", "C4", "n4", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM8
+    "v3CM9": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM9
+}
+
 # Define Nonlinear Constrained Optimization (TC) ECM estimation
-def time_constant_constraints(params, ECM_name):
-    """
-    Define nonlinear constraints for time constant ordering.
-    This function returns a list of constraints that ensure the time constants of RC components are in ascending order.
-    """
-    if ECM_name == "v3CM2":
-        R0_val, R1_val, R2_val, C1_val, n1_val, C2_val, n2_val = params
-        return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val)]
+# def time_constant_constraints(params, ECM_name):
+#     """
+#     Define nonlinear constraints for time constant ordering.
+#     This function returns a list of constraints that ensure the time constants of RC components are in ascending order.
+#     """
+#     if ECM_name == "v3CM2":
+#         R0_val, R1_val, R2_val, C1_val, n1_val, C2_val, n2_val = params
+#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val)]
     
-    elif ECM_name == "v3CM3":
-        R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val = params
-        return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
-                compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val)]
+#     elif ECM_name == "v3CM3":
+#         R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val = params
+#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
+#                 compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val)]
     
-    elif ECM_name == "v3CM4":
-        R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val = params
-        return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
-                compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val),
-                compute_time_constant(R4_val, C4_val, n4_val) - compute_time_constant(R3_val, C3_val, n3_val)]
+#     elif ECM_name == "v3CM4":
+#         R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val = params
+#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
+#                 compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val),
+#                 compute_time_constant(R4_val, C4_val, n4_val) - compute_time_constant(R3_val, C3_val, n3_val)]
     
-    elif ECM_name == "v3CM7":
-        R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val = params
-        return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val)]
+#     elif ECM_name == "v3CM7":
+#         R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val = params
+#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val)]
     
-    elif ECM_name == "v3CM8":
-        R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val, sigma_val = params
-        return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
-                compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val)]
-    #TODO: CM9
-    elif ECM_name not in ECM_NAMES:
-        raise ValueError(f"Unknown ECM name: {ECM_name}. Cannot define time constant constraints.")
-    else:
-        return [] # No constraints
+#     elif ECM_name == "v3CM8":
+#         R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val, sigma_val = params
+#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
+#                 compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val)]
+#     #TODO: CM9
+#     elif ECM_name not in ECM_NAMES:
+#         raise ValueError(f"Unknown ECM name: {ECM_name}. Cannot define time constant constraints.")
+#     else:
+#         return [] # No constraints
 
 
 
@@ -471,67 +483,67 @@ def LSQ_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initial_gu
     
 
 # Define Nonlinear Constrained Optimization (TC) ECM estimation
-def TC_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initial_guess, bounds=None, cost_func_name = None, optimizer_options=None, verbose=True):
-    """
-    ECM estimation using Scipy-"trust-constr" to add ordering contraints on time constants.
-    This function is used to estimate ECM parameters
-    """
-    if optimizer_options is None:
-        optimizer_options = {
-            'maxiter': 3000,
-            'disp': False,
-            'finite_diff_rel_step': 1e-8  # More stable than default for small-valued params
-        }
+# def TC_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initial_guess, bounds=None, cost_func_name = None, optimizer_options=None, verbose=True):
+#     """
+#     ECM estimation using Scipy-"trust-constr" to add ordering contraints on time constants.
+#     This function is used to estimate ECM parameters
+#     """
+#     if optimizer_options is None:
+#         optimizer_options = {
+#             'maxiter': 3000,
+#             'disp': False,
+#             'finite_diff_rel_step': 1e-8  # More stable than default for small-valued params
+#         }
 
-    # Select Cost Function
-    if cost_func_name in COST_FUNCTION_MAP:
-        raw_cost_func = COST_FUNCTION_MAP[cost_func_name]
-        cost_function = partial(raw_cost_func, Z_exp=Z_exp, angular_freq=angular_freq, impedance_func=impedance_func)
-    else:
-        if cost_func_name is not None:
-            print(f"Warning: Unknown cost function '{cost_func_name}', using 'Root Mean Sum of Squares' as default.")
-        cost_function = partial(cost_RMSE_abs, Z_exp=Z_exp, angular_freq=angular_freq, impedance_func=impedance_func)
+#     # Select Cost Function
+#     if cost_func_name in COST_FUNCTION_MAP:
+#         raw_cost_func = COST_FUNCTION_MAP[cost_func_name]
+#         cost_function = partial(raw_cost_func, Z_exp=Z_exp, angular_freq=angular_freq, impedance_func=impedance_func)
+#     else:
+#         if cost_func_name is not None:
+#             print(f"Warning: Unknown cost function '{cost_func_name}', using 'Root Mean Sum of Squares' as default.")
+#         cost_function = partial(cost_RMSE_abs, Z_exp=Z_exp, angular_freq=angular_freq, impedance_func=impedance_func)
 
-    if verbose:
-        print(f"Estimating input EIS with ECM {ECM_name} (trust-constr)")
+#     if verbose:
+#         print(f"Estimating input EIS with ECM {ECM_name} (trust-constr)")
     
-    # Define Nonlinear Constraints for time constant ordering
-    constraint_func = lambda params: time_constant_constraints(params, ECM_name)
-    num_constraints = len(constraint_func(initial_guess))  # Number of constraints
+#     # Define Nonlinear Constraints for time constant ordering
+#     constraint_func = lambda params: time_constant_constraints(params, ECM_name)
+#     num_constraints = len(constraint_func(initial_guess))  # Number of constraints
 
-    constraint_vals = constraint_func(initial_guess)
-    if len(constraint_vals) > 0:
-        nonlinear_constraints = NonlinearConstraint(
-            fun=constraint_func,
-            lb=[1e-7] * len(constraint_vals),
-            ub=[np.inf] * len(constraint_vals)
-        )
-        constraints = [nonlinear_constraints]
-    else:
-        constraints = []
+#     constraint_vals = constraint_func(initial_guess)
+#     if len(constraint_vals) > 0:
+#         nonlinear_constraints = NonlinearConstraint(
+#             fun=constraint_func,
+#             lb=[1e-7] * len(constraint_vals),
+#             ub=[np.inf] * len(constraint_vals)
+#         )
+#         constraints = [nonlinear_constraints]
+#     else:
+#         constraints = []
     
 
-    result = minimize(
-        fun=cost_function,
-        x0=initial_guess,
-        method='trust-constr',
-        bounds=bounds,
-        constraints=constraints,
-        options=optimizer_options
-    )
+#     result = minimize(
+#         fun=cost_function,
+#         x0=initial_guess,
+#         method='trust-constr',
+#         bounds=bounds,
+#         constraints=constraints,
+#         options=optimizer_options
+#     )
 
-    fitted_params = result.x
-    # sorted_params = sort_by_tau(fitted_params, ECM_name)
-    if verbose:
-        print("Optimization success:", result.success)
-        print("Estimated parameter values (sorted):", fitted_params)
-        print("Final cost:", result.fun)
+#     fitted_params = result.x
+#     # sorted_params = sort_by_tau(fitted_params, ECM_name)
+#     if verbose:
+#         print("Optimization success:", result.success)
+#         print("Estimated parameter values (sorted):", fitted_params)
+#         print("Final cost:", result.fun)
     
-    if not result.success:
-        print("Trust-Constr Optimization not success:")
-        print(result)
+#     if not result.success:
+#         print("Trust-Constr Optimization not success:")
+#         print(result)
     
-    return fitted_params, result.fun, result
+#     return fitted_params, result.fun, result
 
 
 

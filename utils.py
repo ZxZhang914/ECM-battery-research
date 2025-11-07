@@ -165,10 +165,9 @@ def ECM_parameter_estimation(ECM_model_name, target_battery_name, target_battery
     
     # All SOH states
     for soh_i in range(target_battery_metadata["num_soh"]):
-        if soh_i !=2: continue #
-
+        # if soh_i !=0: continue #
         soh_data = target_battery_metadata["soh"][soh_i]
-        print(f"Hardcode for CELL 50: i={soh_i}, capacity={soh_data["capacity"]}, num_soc={soh_data["num_soc"]}") #
+        # print(f"Hardcode for CELL 50: i={soh_i}, capacity={soh_data["capacity"]}, num_soc={soh_data["num_soc"]}") #
         
         # All SOC states
         for soc_i in range(soh_data["num_soc"]):

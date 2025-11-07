@@ -19,13 +19,13 @@ from ECM_impedance_v3 import *
 from utils import format_EIS, EIS_Nyquist_meas_vs_fit_save
 
 # Configureation
-CELL_NAME = "CELL042"
+CELL_NAME = "CELL050"
 ECM_name = "v3CM9"
 ECM_tag = "ECMv9"
 obj_func = "RMSE"
 num_trials = 100
 # pdf_path = f"MatlabResult_{CELL_NAME}_{ECM_name}_trials{num_trials}.pdf"
-pdf_path = f"PythonResult_{CELL_NAME}_{ECM_name}_trials{num_trials}(outliers).pdf"
+pdf_path = f"PythonResult_{CELL_NAME}_{ECM_name}_trials{num_trials}(check).pdf"
 
 
 
@@ -75,7 +75,7 @@ def main():
                 else:
                     soc_tag = f"{soc_i}"
                 # filepath = f"Matlab/{ECM_tag}/{CELL_NAME}/SOH{soh_i+1}/{CELL_NAME}_SOH0{soh_i+1}_SOC{soc_tag}_{ECM_tag}_sorted.csv"
-                filepath = f"ECM_Params_Estimation/{CELL_NAME}/{ECM_name}_{obj_func}_trials{num_trials}/soh{soh_i+1}/{CELL_NAME}_soh{soh_i+1}_soc{soc_i+1}_trials{num_trials}_objFunc_{obj_func}_{ECM_name}.csv"
+                filepath = f"ECM_Params_Estimation/{CELL_NAME}/{ECM_name}_{obj_func}_trials{num_trials}/soh{soh_i+1}/{CELL_NAME}_soh{soh_i+1}_soc{soc_i+1}_trials{num_trials}_objFunc_{obj_func}_{ECM_name}_rmOutliers.csv"
                 subtitle = f"trials{num_trials}_{ECM_name}"
 
                 df = pd.read_csv(filepath)
