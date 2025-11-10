@@ -326,7 +326,7 @@ def main():
         # =====================================================
         # 🔹 Experiment 3 condition: reduce training SOC samples
         # =====================================================
-        REDUCED_TRAINING = False  # NOTE: toggle here for Experiment 3
+        REDUCED_TRAINING = True  # NOTE: toggle here for Experiment 3
         if REDUCED_TRAINING:
             df_train = reduce_training_samples(df_train, soc_col="SOC", soh_col="SOH")
             # Rebuild numpy arrays
@@ -343,8 +343,8 @@ def main():
         train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
         val_loader = DataLoader(TabDataset(X_val, y_val), batch_size=256, shuffle=False)
 
-        # Model
-        model = MLPRegressor(in_dim=len(FEATURES), hidden=[128, 64, 32], p_drop=0.1).to(DEVICE)
+        # Model #NOTE: may adjust architecture here
+        model = MLPRegressor(in_dim=len(FEATURES), hidden=[64, 32], p_drop=0.1).to(DEVICE)
 
         # Train
         model = train(model, train_loader, val_loader, epochs=400)

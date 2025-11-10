@@ -150,7 +150,7 @@ if __name__ == "__main__":
     ECM_tag = "ECMv9"
     obj_func = "RMSE"
     num_trials = 100
-    soc_range = "G25"
+    soc_range = "G25" # all, L25, G25
     stats = "all"
     # ====== CONFIGURE ======
     ROOT_DIR = Path("ECM_Params_Estimation")

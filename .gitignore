@@ -5,6 +5,9 @@ MLP_Plots
 qc_plots
 SOH_Regression_Plots
 MLP_Transfer_Learning_Calibration/outputs
+SOH_Regression_Results
+OLS_plots
+CELL_Param_SOC_plots
 
 # Generated new csv files
 *.csv
