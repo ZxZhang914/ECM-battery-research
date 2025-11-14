@@ -1,13 +1,17 @@
-# All Plots and Results Folders
+# ECM Fitting Data
 ECM_Params_Estimation
 Matlab_Result
-MLP_Plots
-qc_plots
-SOH_Regression_Plots
+
+# Subfolder Results Outputs
 MLP_Transfer_Learning_Calibration/outputs
-SOH_Regression_Results
-OLS_plots
+
+# Experiment Results
+LR_Experiments
+MLP_Experiments
+
+# Other Plots
+qc_plots
 CELL_Param_SOC_plots
 
-# Generated new csv files
+# All csv Files
 *.csv
