@@ -158,12 +158,15 @@ def plot_leave_n_out_results(results_df, save_dir="OLS_plots/LeaveNOut"):
         plt.plot(n_values, mean_r2, marker="o", label=cell, alpha=0.6)
 
     # Average curve
-    avg_r2 = [results_df[results_df["n"] == n]["MAPE"].mean() for n in n_values]
-    plt.plot(n_values, avg_r2, "k--", marker="s", linewidth=2.5, label="Average")
+    avg_mape = [results_df[results_df["n"] == n]["MAPE"].mean() for n in n_values]
+    print(f"Average MAPE: {avg_mape}")
+    plt.plot(n_values, avg_mape, "k--", marker="s", linewidth=2.5, label="Average")
 
     # Make x-axis discrete
     plt.xticks(n_values, [str(int(n)) for n in n_values])
     plt.xlim(min(n_values) - 0.2, max(n_values) + 0.2)
+    # plt.ylim(-0.2, 21)
+
 
     plt.xlabel("Number of Test Cells (n)")
     plt.ylabel("MAPE (%)")
@@ -210,4 +213,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    partial_df = pd.read_csv("OLS_plots/LeaveNOut/OLS_LOON_results_all.csv")
+    partial_df = partial_df[partial_df["n"].isin([1,2,3,4,5,])]
+    plot_leave_n_out_results(partial_df, save_dir="OLS_plots/LeaveNOut")

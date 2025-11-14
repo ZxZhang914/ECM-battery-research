@@ -254,11 +254,11 @@ def compute_group_performance(df_split):
 def eval_model(df_split, name, aggregate=False):
     """Evaluate model performance on either raw or aggregated predictions."""
     if aggregate:
-        mask = df_split["SOH_mean"].notna() & df_split["Pred_mean"].notna()
+        mask = df_split["SOH_mean"].notna() & df_split["Pred_mean"].notna() & (df_split["SOH_mean"] > 2.52) 
         y_true = df_split.loc[mask, "SOH_mean"]
         y_pred = df_split.loc[mask, "Pred_mean"]
     else:
-        mask = df_split["SOH"].notna() & df_split["y_pred"].notna()
+        mask = df_split["SOH"].notna() & df_split["y_pred"].notna() & (df_split["SOH"] > 2.52)
         y_true = df_split.loc[mask, "SOH"]
         y_pred = df_split.loc[mask, "y_pred"]
 
@@ -341,25 +341,25 @@ def main():
 
     # ---- Split ----
     ####### ALL DATA ########
-    X_all = df_all[FEATURES].values.astype(np.float32)
-    y_all = df_all[TARGET].values.astype(np.float32)
-    all_idx = np.arange(len(df_all))
+    # X_all = df_all[FEATURES].values.astype(np.float32)
+    # y_all = df_all[TARGET].values.astype(np.float32)
+    # all_idx = np.arange(len(df_all))
 
-    X_train, X_temp, y_train, y_temp, train_idx, temp_idx = train_test_split(
-        X_all, y_all, all_idx, test_size=0.2, random_state=42
-    )
-    X_val, X_test, y_val, y_test, val_idx, test_idx = train_test_split(
-        X_temp, y_temp, temp_idx, test_size=0.5, random_state=42
-    )
-    # create dfs
-    df_train = df_all.iloc[train_idx].reset_index(drop=True)
-    df_val   = df_all.iloc[val_idx].reset_index(drop=True)
-    df_test  = df_all.iloc[test_idx].reset_index(drop=True)
-    print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
+    # X_train, X_temp, y_train, y_temp, train_idx, temp_idx = train_test_split(
+    #     X_all, y_all, all_idx, test_size=0.2, random_state=42
+    # )
+    # X_val, X_test, y_val, y_test, val_idx, test_idx = train_test_split(
+    #     X_temp, y_temp, temp_idx, test_size=0.5, random_state=42
+    # )
+    # # create dfs
+    # df_train = df_all.iloc[train_idx].reset_index(drop=True)
+    # df_val   = df_all.iloc[val_idx].reset_index(drop=True)
+    # df_test  = df_all.iloc[test_idx].reset_index(drop=True)
+    # print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
     
-    plot_save_dir = "MLP_plots/allTemp/Rs_SOC_Temp"
-    if not os.path.exists(plot_save_dir):
-        os.makedirs(plot_save_dir)
+    # plot_save_dir = "MLP_plots/allTemp/Rs_SOC_Temp"
+    # if not os.path.exists(plot_save_dir):
+    #     os.makedirs(plot_save_dir)
     
      ####### By CELL Split DATA ########
     # train_cells = ["CELL009", "CELL021", "CELL077"] + ["CELL032", "CELL070", "CELL101"] # all 0 & 45
@@ -370,27 +370,27 @@ def main():
     # test_cells = ["CELL077"]
     # train_cells = ["CELL032", "CELL070"]
     # test_cells = ["CELL101"]
-    # train_cells = ["CELL076", "CELL013", "CELL096", "CELL050", "CELL042",  "CELL045", "CELL077", "CELL009", "CELL101", "CELL070"]
-    # test_cells  = ["CELL090", "CELL054", "CELL021", "CELL032"]  
+    train_cells = ["CELL076", "CELL013", "CELL096", "CELL050", "CELL042",  "CELL045", "CELL077", "CELL009", "CELL101", "CELL070"]
+    test_cells  = ["CELL090", "CELL054", "CELL021", "CELL032"]  
 
 
-    # train_soc_ranges = []
-    # test_soc_ranges = []
+    train_soc_ranges = []
+    test_soc_ranges = []
 
-    # X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, scaler = load_and_split_data(
-    #     csv_path="fulldf_global_all.csv",
-    #     train_cells=train_cells,
-    #     test_cells=test_cells,
-    #     split_by_soc=False,
-    #     train_soc_ranges=train_soc_ranges,
-    #     test_soc_ranges=test_soc_ranges,
-    #     val_ratio=0.2, 
-    #     features=FEATURES,
-    #     target=TARGET
-    # )
-    # plot_save_dir = "MLP_plots/AllTemp_Leaveout/Rs_SOC_Temp"
-    # if not os.path.exists(plot_save_dir):
-    #     os.makedirs(plot_save_dir)
+    X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, scaler = load_and_split_data(
+        csv_path="fulldf_global_all.csv",
+        train_cells=train_cells,
+        test_cells=test_cells,
+        split_by_soc=False,
+        train_soc_ranges=train_soc_ranges,
+        test_soc_ranges=test_soc_ranges,
+        val_ratio=0.2, 
+        features=FEATURES,
+        target=TARGET
+    )
+    plot_save_dir = "MLP_plots/AllTemp_Leaveout/Rs_SOC_Temp"
+    if not os.path.exists(plot_save_dir):
+        os.makedirs(plot_save_dir)
 
     # ---- Torch Dataloaders ----
     train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
