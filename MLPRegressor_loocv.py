@@ -295,11 +295,11 @@ def plot_aggregated_val_test(df_perf_val, df_perf_test, color_map=None, save_dir
 # =====================================================
 def main():
     # Load data
-    df_all = pd.read_csv("fulldf_global_all.csv", index_col=0)
+    df_all = pd.read_csv("fulldf_removeAb_date_G25SOC_all.csv", index_col=0)
     df_all = df_all[df_all["Temp"] == 25]  # Use only 25°C data
     #NOTE: Exclude some cells
-    mask = df_all["CELL"].isin(["CELL090", "CELL096", "CELL042", "CELL050"])
-    df_all = df_all[~mask]
+    # mask = df_all["CELL"].isin(["CELL090", "CELL096", "CELL042", "CELL050"])
+    # df_all = df_all[~mask]
 
 
     FEATURES = ["R0", "R1", "R2", "R3", "SOC"]
@@ -331,7 +331,7 @@ def main():
         # =====================================================
         # 🔹 Experiment 3 condition: reduce training SOC samples
         # =====================================================
-        REDUCED_TRAINING = False  # NOTE: toggle here for Experiment 3
+        REDUCED_TRAINING = True  # NOTE: toggle here for Experiment 3
         if REDUCED_TRAINING:
             df_train = reduce_training_samples(df_train, soc_col="SOC", soh_col="SOH")
             # Rebuild numpy arrays
@@ -356,7 +356,7 @@ def main():
 
         # Evaluate
         exp_tag = "_Exp3_reducedSOC" if REDUCED_TRAINING else ""
-        plot_dir = f"MLP_plots/LOOCV25_4cells_{exp_tag}/Rs_SOC/{test_cell}/"
+        plot_dir = f"MLP_plots/LOOCV25_removeAbCells_{exp_tag}/Rs_SOC/{test_cell}/" #NOTE: change save dir
         os.makedirs(plot_dir, exist_ok=True)
 
         train_df_vis, train_mae, train_rmse, train_mape, train_r2 = evaluate_and_plot(

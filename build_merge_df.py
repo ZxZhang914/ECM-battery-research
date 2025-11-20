@@ -55,7 +55,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
      # All SOH states
     for soh_i in range(celli_metadata["num_soh"]):
         if remove_SOH and ((soh_i+1) in remove_SOHidx):
-            print(f"[{cell_name}] SOH {soh_i+1} skipped.")
+            print(f"[{cell_name}] SOH {soh_i+1}, with test date {celli_metadata["soh"][soh_i]["date"]}, skipped.")
             continue
         soh_data = celli_metadata["soh"][soh_i]
         for soc_i in range(soh_data["num_soc"]):
@@ -71,7 +71,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
             else:
                 file = os.path.join(
                     base_folder,
-                    f"soh{soh_i+1}/{cell_name}_soh{soh_i+1}_soc{soc_i+1}_trials{num_trials}_objFunc_{obj_func}_{ECM_name}_rmOutliers.csv"
+                    f"soh{soh_i+1}/{cell_name}_soh{soh_i+1}_soc{soc_i+1}_trials{num_trials}_objFunc_{obj_func}_{ECM_name}_rmOutliers2.csv" #NOTE: Modify the path when necessary
                 )
        
             df = pd.read_csv(file)
@@ -84,13 +84,45 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
 
             # Apply SOC-range filter logic
             def soc_in_range(v):
+                """
+                soc_range expected formats:
+                - "all"
+                - "Gxx"     -> v > xx
+                - "GEQxx"   -> v >= xx
+                - "Lxx"     -> v < xx
+                - "LEQxx"   -> v <= xx
+                where xx is an integer or float (percentage or decimal).
+
+                Example:
+                    soc_range = "G25"    -> v > 0.25
+                    soc_range = "LEQ40"  -> v <= 0.40
+                """
                 if soc_range == "all":
                     return True
-                if soc_range == "G25":     # > 0.25
-                    return v > 0.25
-                if soc_range == "LEQ25":   # <= 0.25
-                    return v <= 0.25
-                raise ValueError("soc_range must be one of ['all', 'G25', 'LEQ25']")
+
+                import re
+
+                # Match patterns like G25, GEQ25, L30, LEQ30, G12.5, etc.
+                m = re.fullmatch(r"(G|GEQ|L|LEQ)(\d+(?:\.\d+)?)", soc_range)
+                if not m:
+                    raise ValueError(
+                        "soc_range must be 'all' or of form Gxx, GEQxx, Lxx, LEQxx where xx is a number."
+                    )
+
+                op, val_str = m.groups()
+                threshold = float(val_str) / 100.0  # Convert percentage xx to decimal xx/100
+
+                if op == "G":
+                    return v > threshold
+                if op == "GEQ":
+                    return v >= threshold
+                if op == "L":
+                    return v < threshold
+                if op == "LEQ":
+                    return v <= threshold
+
+                raise ValueError(f"Unhandled operator: {op}")
+            
 
             if not soc_in_range(soc_val):
                 continue
@@ -153,7 +185,7 @@ if __name__ == "__main__":
     ECM_tag = "ECMv9"
     obj_func = "RMSE"
     num_trials = 100
-    soc_range = "G25" # all, L25, G25
+    soc_range = "G25" # all, "Gxx" (v > xx), "GEQxx" (v >= xx), "Lxx" (v < xx), "LEQxx" (v <= xx); where xx is an integer or float (referring to SOC percentage, e.g. soc_range = "G25")
     stats = "all"
     # ====== CONFIGURE ======
     ROOT_DIR = Path("ECM_Params_Estimation")
@@ -164,36 +196,36 @@ if __name__ == "__main__":
         "CELL070": 45, "CELL101": 45, "CELL032": 45
     }
     CELLS = TEMP_MAP.keys()
-    REMOVE_DATES = { #NOTE: Remove duplicate Capacity (see summary doc table)
-        "CELL009": ["20230424"],
+    REMOVE_DATES = { #NOTE: Remove duplicate Capacity (see summary doc table) | Remove Abnormal
+        "CELL009": [],
         "CELL021": [],
-        "CELL077": ["20230327"],
+        "CELL077": [],
         "CELL013": [],
-        "CELL042": [],
+        "CELL042": ["20230324"],
         "CELL045": [],
-        "CELL050": [],
-        "CELL054": [],
-        "CELL076": ["20230405"],
+        "CELL050": ["20230404"],
+        "CELL054": ["20240108"],
+        "CELL076": [],
         "CELL090": [],
         "CELL096": [],
         "CELL032": [],
-        "CELL070": ["20230315"],
+        "CELL070": [],
         "CELL101": [],
     }
-    REMOVE_SOHidxS = { #NOTE: Remove duplicate Capacity [index version 1-based] (see summary doc table)
-        "CELL009": [3],
+    REMOVE_SOHidxS = { #NOTE: Remove duplicate Capacity [index version 1-based] (see summary doc table) | Remove Abnormal
+        "CELL009": [],
         "CELL021": [],
-        "CELL077": [2],
+        "CELL077": [],
         "CELL013": [],
-        "CELL042": [],
+        "CELL042": [3],
         "CELL045": [],
-        "CELL050": [],
-        "CELL054": [],
-        "CELL076": [1],
-        "CELL090": [],
-        "CELL096": [],
+        "CELL050": [2],
+        "CELL054": [2],
+        "CELL076": [],
+        "CELL090": [1,2,3,4],
+        "CELL096": [1,2,3],
         "CELL032": [],
-        "CELL070": [2],
+        "CELL070": [],
         "CELL101": [],
     }
     # =======================
@@ -203,7 +235,8 @@ if __name__ == "__main__":
     
     # Non-remove version
     for cell in CELLS:
-        build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, remove_SOHidx=REMOVE_SOHidxS[cell])
-    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, save_filename_prefix="fulldf_global_date_G25SOC")
+        build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
+    save_filename_prefix = f"fulldf_removeAb_date_{soc_range}SOC" #NOTE: Modify the path when necessary
+    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix=save_filename_prefix)
 
     
