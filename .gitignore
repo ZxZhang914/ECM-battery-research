@@ -11,7 +11,7 @@ MLP_Experiments
 
 # Other Plots
 qc_plots
-CELL_Param_SOC_plots
+ECM_Params_Analysis
 
 # All csv Files
 *.csv

@@ -80,6 +80,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
             # Build SOC/SOH scalars
             soh_val = soh_data["capacity"]
             soc_val = soh_data["soc"][soc_i]
+            test_date = soh_data["date"]
 
             # Apply SOC-range filter logic
             def soc_in_range(v):
@@ -96,6 +97,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
 
             if stats == "all":
                 rows = df[params_names].copy()
+                rows["date"] = test_date
                 rows["SOH"] = soh_val
                 rows["SOC"] = soc_val
                 result_rows.append(rows)
@@ -113,6 +115,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
                 raise ValueError("stats must be one of ['median', 'mean', 'best', 'all']")
 
             row_df = row.to_frame().T  # normalize to a 1-row DataFrame
+            row_df["date"] = test_date
             row_df["SOH"] = soh_val
             row_df["SOC"] = soc_val
             result_rows.append(row_df)
@@ -122,7 +125,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
         result_df = pd.concat(result_rows, ignore_index=True)
     else:
         params_names = EXPANDED_PARAMS_NAMES[ECM_name]
-        result_df = pd.DataFrame(columns=list(params_names) + ["SOH", "SOC"])
+        result_df = pd.DataFrame(columns=list(params_names) + ["date", "SOH", "SOC"])
 
     # Save merged CSV
     if remove_SOH:
@@ -201,6 +204,6 @@ if __name__ == "__main__":
     # Non-remove version
     for cell in CELLS:
         build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, remove_SOHidx=REMOVE_SOHidxS[cell])
-    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, save_filename_prefix="fulldf_global")
+    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, save_filename_prefix="fulldf_global_date_G25SOC")
 
     

@@ -19,13 +19,13 @@ from ECM_impedance_v3 import *
 from utils import format_EIS, EIS_Nyquist_meas_vs_fit_save
 
 # Configureation
-CELL_NAME = "CELL050"
+CELL_NAME = "CELL013"
 ECM_name = "v3CM9"
 ECM_tag = "ECMv9"
 obj_func = "RMSE"
 num_trials = 100
 # pdf_path = f"MatlabResult_{CELL_NAME}_{ECM_name}_trials{num_trials}.pdf"
-pdf_path = f"PythonResult_{CELL_NAME}_{ECM_name}_trials{num_trials}(check).pdf"
+pdf_path = f"PythonResult_{CELL_NAME}_{ECM_name}_trials{num_trials}.pdf"
 
 
 

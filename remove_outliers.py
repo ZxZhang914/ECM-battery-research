@@ -18,12 +18,14 @@ from ECM_impedance_v3 import *
 from utils import format_EIS, ECM_parameter_estimation
 
 # Configureation
-CELL_NAME = "CELL050"
+CELL_NAME = "CELL090"
 ECM_name = "v3CM9"
 ECM_tag = "ECMv9"
 obj_func = "RMSE"
 num_trials = 100
 
+remove_based_on_parameters_percentile = True  # If True, apply criterion 6
+pct_central = 0.95
 
 def main():
     # ==== Load battery metadata from JSON file ====
@@ -117,10 +119,29 @@ def main():
             else:
                 print("Step 5: skipped (no error metric)")
 
+            final_df = df_step5
             
-            # Save final output
-            output_filename = filepath.replace(".csv", "_rmOutliers.csv")
-            df_step5.to_csv(output_filename, index=False)
+            if remove_based_on_parameters_percentile:
+                # NOTE: This step is optional 
+                # ---- Step 6: keep rows that all parameters within central 95th percentile
+                lw_pct = (1 - pct_central) / 2
+                up_pct = 1 - lw_pct
+                df_step6 = df_step5.copy()
+                for param in PARAMS_NAMES[ECM_name]:
+                    lower_bound = df_step5[param].quantile(lw_pct)
+                    upper_bound = df_step5[param].quantile(up_pct)
+                    mask_param = (df_step5[param] >= lower_bound) & (df_step5[param] <= upper_bound)
+                    df_step6 = df_step6.loc[mask_param]
+                    if len(df_step6) < 10:
+                        df_step6 = df_step5
+                        print(f"Step 6: less than 10 rows kept after filtering {param} within central {pct_central}, skip this criterion")
+                    else:
+                        print(f"Step 6: {len(df_step6)} rows kept after filtering {param} within central {pct_central} percentile")
+                final_df = df_step6
+            
+            # Save final output #NOTE: change filename here if needed
+            output_filename = filepath.replace(".csv", "_rmOutliers2.csv")
+            final_df.to_csv(output_filename, index=False)
             print(f"Filtered data saved to: {output_filename}")
 
 if __name__ == "__main__":
