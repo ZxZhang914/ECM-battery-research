@@ -160,20 +160,31 @@ def plot_predictions(df, y_true, y_pred, color_map, title="SOH Prediction", save
     # cmap = plt.cm.get_cmap("tab10", len(unique_cells))
     # color_map = {cell: cmap(i) for i, cell in enumerate(unique_cells)}
     # #####
+    if "CELL" in df.columns and color_map is not None:
+        unique_cells = df["CELL"].unique()
+        for cell in unique_cells:
+            sub = df[df["CELL"] == cell]
+            plt.scatter(
+                sub["y_true"], sub["y_pred"],
+                s=10, alpha=0.9, label=cell,
+                color=color_map.get(cell, None)
+            )
 
-    plt.scatter(y_true, y_pred, c=df["CELL"].map(color_map), s=10, alpha=0.8)
+    # plt.scatter(y_true, y_pred, c=df["CELL"].map(color_map), s=10, alpha=0.8)
     
-    plt.plot(plot_range, plot_range, 'k--', lw=2, label="Ideal = y=x")
+    plt.plot(plot_range, plot_range, "r--", label="y=x")
     plt.xlabel("True SOH")
     plt.ylabel("Predicted SOH")
     plt.title(title)
     # plt.xlim(plot_range[0], plot_range[1])
     # plt.ylim(plot_range[0], plot_range[1])
     plt.grid(True, alpha=0.3)
-    handles = [mpatches.Patch(color=color_map[cell], label=cell)
-               for cell in sorted(df["CELL"].unique()) if cell in color_map]
-    plt.legend(handles=handles, title="Cell", bbox_to_anchor=(1.05, 1), loc="upper left")
+    # handles = [mpatches.Patch(color=color_map[cell], label=cell)
+    #            for cell in sorted(df["CELL"].unique()) if cell in color_map]
+    # plt.legend(handles=handles, title="Cell", bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left", title="CELLs")
     plt.tight_layout()
+    plt.axis("equal")
     plt.axis("square")
     savepath = os.path.join(save_dir, f"allTemp_{title_dataset}.png")
     plt.savefig(savepath, dpi=300)
@@ -316,6 +327,7 @@ def plot_group_summary(df_perf, name, color_map=None, save_dir="MLP_plots/allTem
 # Main Execution Pipeline
 # ================================================================
 def main():
+    DRT = True
     # ---- Load Metadata and Color Map ----
     battery_json_file = "../EVC_EIS_Data/original_data/Battery_Info_DRT.json"
     with open(battery_json_file, "r") as f:
@@ -323,10 +335,18 @@ def main():
     color_map = build_cell_colormap(battery_metadata)
 
     # ---- Load Data ----
-    data_path = Path("fulldf_global_all.csv")
+    if DRT:
+        data_path = Path("drtdf_date_allSOC.csv")
+    else: 
+        data_path = Path("fulldf_global_date_G25SOC_all.csv")
     if data_path is None:
-        raise FileNotFoundError("Missing fulldf_global_all.csv.")
-    df_all = pd.read_csv(data_path, index_col=0)
+        raise FileNotFoundError("Missing df")
+    
+    if DRT:
+        df_all = pd.read_csv(data_path)
+    else:
+        df_all = pd.read_csv(data_path, index_col=0) #current ECM df need to remove first idx column
+        
     # df_all = df_all[df_all["Temp"] == 25] #NOTE: Select 25 only
 
     # ---- Clean Data ----
@@ -334,32 +354,47 @@ def main():
     FEATURES = ["R0", "R1", "R2", "R3", "SOC", "Temp"]
 
     TARGET = "SOH"
-    REQ_COLS = ["CELL", "SOH", "SOC", "tau1", "tau2", "tau3", "Aw", "Temp"] + FEATURES
+    REQ_COLS = ["CELL", "SOH", "SOC", "tau1", "tau2", "tau3", "Temp"] + FEATURES
     df_all = df_all.dropna(subset=REQ_COLS).reset_index(drop=True)
     cond_all, all_sohbin, all_socbin = build_condition_key(df_all)
     df_all = df_all.assign(COND_ID=cond_all, SOH_BIN=all_sohbin, SOC_BIN=all_socbin)
 
     # ---- Split ----
     ####### ALL DATA ########
-    # X_all = df_all[FEATURES].values.astype(np.float32)
-    # y_all = df_all[TARGET].values.astype(np.float32)
-    # all_idx = np.arange(len(df_all))
+    if not DRT:
+        X_all = df_all[FEATURES].values.astype(np.float32)
+        y_all = df_all[TARGET].values.astype(np.float32)
+        all_idx = np.arange(len(df_all))
 
-    # X_train, X_temp, y_train, y_temp, train_idx, temp_idx = train_test_split(
-    #     X_all, y_all, all_idx, test_size=0.2, random_state=42
-    # )
-    # X_val, X_test, y_val, y_test, val_idx, test_idx = train_test_split(
-    #     X_temp, y_temp, temp_idx, test_size=0.5, random_state=42
-    # )
-    # # create dfs
-    # df_train = df_all.iloc[train_idx].reset_index(drop=True)
-    # df_val   = df_all.iloc[val_idx].reset_index(drop=True)
-    # df_test  = df_all.iloc[test_idx].reset_index(drop=True)
-    # print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
-    
-    # plot_save_dir = "MLP_plots/allTemp/Rs_SOC_Temp"
-    # if not os.path.exists(plot_save_dir):
-    #     os.makedirs(plot_save_dir)
+        X_train, X_temp, y_train, y_temp, train_idx, temp_idx = train_test_split(
+            X_all, y_all, all_idx, test_size=0.2, random_state=42
+        )
+        X_val, X_test, y_val, y_test, val_idx, test_idx = train_test_split(
+            X_temp, y_temp, temp_idx, test_size=0.5, random_state=42
+        )
+        # create dfs
+        df_train = df_all.iloc[train_idx].reset_index(drop=True)
+        df_val   = df_all.iloc[val_idx].reset_index(drop=True)
+        df_test  = df_all.iloc[test_idx].reset_index(drop=True)
+        print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
+        
+        plot_save_dir = "MLP_plots/allTemp/Rs_SOC_Temp"
+        if not os.path.exists(plot_save_dir):
+            os.makedirs(plot_save_dir)
+    else:
+        X_all = df_all[FEATURES].values.astype(np.float32)
+        y_all = df_all[TARGET].values.astype(np.float32)
+        all_idx = np.arange(len(df_all))
+
+        X_train = X_all.copy(); X_val = X_all.copy(); X_test  = X_all.copy()
+        y_train = y_all.copy(); y_val = y_all.copy(); y_test  = y_all.copy()
+        df_train = df_all.copy(); df_val = df_all.copy(); df_test  = df_all.copy()
+        print(f"\nTrain samples: {len(X_train)} | Val: {len(X_val)} | Test: {len(X_test)}")
+        
+        plot_save_dir = "MLP_plots_DRT/allTemp/Rs_SOC_Temp"
+        if not os.path.exists(plot_save_dir):
+            os.makedirs(plot_save_dir)
+        
     
      ####### By CELL Split DATA ########
     # train_cells = ["CELL009", "CELL021", "CELL077"] + ["CELL032", "CELL070", "CELL101"] # all 0 & 45
@@ -370,27 +405,27 @@ def main():
     # test_cells = ["CELL077"]
     # train_cells = ["CELL032", "CELL070"]
     # test_cells = ["CELL101"]
-    train_cells = ["CELL076", "CELL013", "CELL096", "CELL050", "CELL042",  "CELL045", "CELL077", "CELL009", "CELL101", "CELL070"]
-    test_cells  = ["CELL090", "CELL054", "CELL021", "CELL032"]  
+    # train_cells = ["CELL076", "CELL013", "CELL096", "CELL050", "CELL042",  "CELL045", "CELL077", "CELL009", "CELL101", "CELL070"]
+    # test_cells  = ["CELL090", "CELL054", "CELL021", "CELL032"]  
 
 
-    train_soc_ranges = []
-    test_soc_ranges = []
+    # train_soc_ranges = []
+    # test_soc_ranges = []
 
-    X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, scaler = load_and_split_data(
-        csv_path="fulldf_global_all.csv",
-        train_cells=train_cells,
-        test_cells=test_cells,
-        split_by_soc=False,
-        train_soc_ranges=train_soc_ranges,
-        test_soc_ranges=test_soc_ranges,
-        val_ratio=0.2, 
-        features=FEATURES,
-        target=TARGET
-    )
-    plot_save_dir = "MLP_plots/AllTemp_Leaveout/Rs_SOC_Temp"
-    if not os.path.exists(plot_save_dir):
-        os.makedirs(plot_save_dir)
+    # X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test, scaler = load_and_split_data(
+    #     csv_path="fulldf_global_all.csv",
+    #     train_cells=train_cells,
+    #     test_cells=test_cells,
+    #     split_by_soc=False,
+    #     train_soc_ranges=train_soc_ranges,
+    #     test_soc_ranges=test_soc_ranges,
+    #     val_ratio=0.2, 
+    #     features=FEATURES,
+    #     target=TARGET
+    # )
+    # plot_save_dir = "MLP_plots_DRT/AllTemp_Leaveout/Rs_SOC_Temp"
+    # if not os.path.exists(plot_save_dir):
+    #     os.makedirs(plot_save_dir)
 
     # ---- Torch Dataloaders ----
     train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
@@ -452,13 +487,14 @@ def main():
     df_val_performance.to_csv(f"{plot_save_dir}/MLP_predictions_valset_aggregated.csv", index=False)
     df_test_performance.to_csv(f"{plot_save_dir}/MLP_predictions_testset_aggregated.csv", index=False)
 
-    # Evaluate aggregated performance
-    eval_model(df_val_performance, "Validation (Aggregated)", aggregate=True)
-    eval_model(df_test_performance, "Test (Aggregated)", aggregate=True)
+    if not DRT:
+        # Evaluate aggregated performance
+        eval_model(df_val_performance, "Validation (Aggregated)", aggregate=True)
+        eval_model(df_test_performance, "Test (Aggregated)", aggregate=True)
 
-    # Plot aggregated performance
-    plot_group_summary(df_val_performance, "Validation", color_map, save_dir=plot_save_dir)
-    plot_group_summary(df_test_performance, "Test", color_map, save_dir=plot_save_dir)
+        # Plot aggregated performance
+        plot_group_summary(df_val_performance, "Validation", color_map, save_dir=plot_save_dir)
+        plot_group_summary(df_test_performance, "Test", color_map, save_dir=plot_save_dir)
 
 if __name__ == "__main__":
     main()

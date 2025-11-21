@@ -12,7 +12,51 @@ from pathlib import Path
 from Fitting_algo_v4 import *
 from utils import load_cell_meta_EIS_data
 
-# For matlab version
+
+ # HelperFunc: Apply SOC-range filter logic
+import re
+
+def soc_in_range(v, soc_range):
+    """
+    soc_range expected formats:
+    - "all"
+    - "Gxx"     -> v > xx
+    - "GEQxx"   -> v >= xx
+    - "Lxx"     -> v < xx
+    - "LEQxx"   -> v <= xx
+    where xx is an integer or float (percentage).
+
+    Example:
+        soc_range = "G25"    -> v > 0.25
+        soc_range = "LEQ40"  -> v <= 0.40
+    """
+    # Allow no filtering
+    if soc_range == "all":
+        return True
+
+    # Match patterns like G25, GEQ25, L30, LEQ30, G12.5, etc.
+    m = re.fullmatch(r"(G|GEQ|L|LEQ)(\d+(?:\.\d+)?)", soc_range)
+    if not m:
+        raise ValueError(
+            "soc_range must be 'all' or of form Gxx, GEQxx, Lxx, LEQxx where xx is a number."
+        )
+
+    op, val_str = m.groups()
+    threshold = float(val_str) / 100.0  # convert xx → 0.xx
+
+    if op == "G":
+        return v > threshold
+    if op == "GEQ":
+        return v >= threshold
+    if op == "L":
+        return v < threshold
+    if op == "LEQ":
+        return v <= threshold
+
+    # Should never reach this
+    raise ValueError(f"Unhandled operator: {op}")
+
+
 
 def build_global_cells_df(cells, Temp_map, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=False, save_filename_prefix="fulldf_global"):
     frames = []
@@ -82,49 +126,8 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
             soc_val = soh_data["soc"][soc_i]
             test_date = soh_data["date"]
 
-            # Apply SOC-range filter logic
-            def soc_in_range(v):
-                """
-                soc_range expected formats:
-                - "all"
-                - "Gxx"     -> v > xx
-                - "GEQxx"   -> v >= xx
-                - "Lxx"     -> v < xx
-                - "LEQxx"   -> v <= xx
-                where xx is an integer or float (percentage or decimal).
-
-                Example:
-                    soc_range = "G25"    -> v > 0.25
-                    soc_range = "LEQ40"  -> v <= 0.40
-                """
-                if soc_range == "all":
-                    return True
-
-                import re
-
-                # Match patterns like G25, GEQ25, L30, LEQ30, G12.5, etc.
-                m = re.fullmatch(r"(G|GEQ|L|LEQ)(\d+(?:\.\d+)?)", soc_range)
-                if not m:
-                    raise ValueError(
-                        "soc_range must be 'all' or of form Gxx, GEQxx, Lxx, LEQxx where xx is a number."
-                    )
-
-                op, val_str = m.groups()
-                threshold = float(val_str) / 100.0  # Convert percentage xx to decimal xx/100
-
-                if op == "G":
-                    return v > threshold
-                if op == "GEQ":
-                    return v >= threshold
-                if op == "L":
-                    return v < threshold
-                if op == "LEQ":
-                    return v <= threshold
-
-                raise ValueError(f"Unhandled operator: {op}")
-            
-
-            if not soc_in_range(soc_val):
+           
+            if not soc_in_range(soc_val, soc_range):
                 continue
 
             if stats == "all":
@@ -175,6 +178,118 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
 
     return result_df
 
+
+def build_drt_merged_df(
+        cells,
+        Temp_map,
+        soc_range="all",
+        remove_SOH=False,
+        remove_SOHidx=None,     # dict: cell → list of SOH indices to remove
+        save_filename_prefix="fulldf_global"
+    ):
+
+    """
+    Build merged DRT dataframe for all cells.
+
+    Parameters:
+        cells: list or iterable of cell names
+        Temp_map: dict mapping cell → temperature
+        soc_range: 'all' or one of Gxx, GEQxx, Lxx, LEQxx
+        remove_SOH: bool → whether to remove certain SOH values
+        remove_SOHidx: dict(cell_name → list of 1-based SOH indices to remove)
+        save_filename_prefix: output CSV prefix
+
+    Returns:
+        merged_df: DataFrame containing all rows from all cells
+    """
+
+    if remove_SOH and remove_SOHidx is None:
+        raise ValueError("remove_SOHidx must be provided when remove_SOH=True")
+
+    all_data = []
+
+    for cell_name in cells:
+
+        drt_csv = f"../EVC_EIS_Data/CELL_DRT_Data_11-3/data_{cell_name}.csv"
+        if not os.path.exists(drt_csv):
+            print(f"[WARN] Missing DRT file for {cell_name}: {drt_csv}")
+            continue
+
+        # --------------------------------------------------------
+        # Load and clean
+        # --------------------------------------------------------
+        df = pd.read_csv(drt_csv)
+        df.columns = df.columns.str.strip()
+        df["date"] = df["date"].astype(str).str.strip()
+
+        # Rename columns
+        df = df.rename(columns={"Charge_capacity_Ah": "SOH"})
+        df = df.rename(columns={"soc": "SOC"})
+
+        # Select needed columns
+        r_cols = [c for c in df.columns if c.startswith("R")]
+        freq_cols = [f"ln_1_over_freq{i}" for i in range(1, 4)]
+        keep_cols = ["date", "SOC", "SOH"] + r_cols + freq_cols
+        df = df[keep_cols].copy()
+
+        # --------------------------------------------------------
+        # Compute freq and tau
+        # --------------------------------------------------------
+        for i in range(1, 4):
+            df[f"freq{i}"] = np.exp(-df[f"ln_1_over_freq{i}"])
+        df.drop(columns=freq_cols, inplace=True)
+
+        for i in range(1, 4):
+            df[f"tau{i}"] = 1 / (2 * np.pi * df[f"freq{i}"])
+
+        # --------------------------------------------------------
+        # SOC filtering
+        # --------------------------------------------------------
+        df = df[df["SOC"].apply(lambda v: soc_in_range(v, soc_range))].reset_index(drop=True)
+        
+        
+
+        # --------------------------------------------------------
+        # Remove SOH (per-cell)
+        # --------------------------------------------------------
+        if remove_SOH:
+            removed_for_this_cell = remove_SOHidx.get(cell_name, [])
+            if removed_for_this_cell:
+                kept_rows = []
+                for i, row in df.iterrows():        # i is 0-based index
+                    soh_idx = i + 1                 # convert to 1-based SOH index
+                    if soh_idx in removed_for_this_cell:
+                        print(f"[{cell_name}] SOH {soh_idx} removed (SOC={row['SOC']}, date={row['date']})")
+                        continue
+                    kept_rows.append(row)
+                df = pd.DataFrame(kept_rows).reset_index(drop=True)
+
+        # --------------------------------------------------------
+        # Add cell + temp
+        # --------------------------------------------------------
+        df.insert(0, "Temp", Temp_map[cell_name])
+        df.insert(0, "CELL", cell_name)
+
+        # NOTE: 25 CELLS are injected with CELL042 BOL data
+        # df = df[~((df["date"] == "20220916") & (df["Temp"] == 25) & (df["CELL"] != "CELL042"))]
+        df = df[~((df["date"] == "20220916") & (df["CELL"] != "CELL042"))]
+
+
+        all_data.append(df)
+
+    # --------------------------------------------------------
+    # Merge everything
+    # --------------------------------------------------------
+    merged_df = pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
+    # Drop any rows containing NaN values
+    merged_df = merged_df.dropna().reset_index(drop=True)
+
+    # Save
+    out_file = f"{save_filename_prefix}.csv"
+    merged_df.to_csv(out_file, index=False)
+    print(f"[DONE] DRT Data Processed. Saved merged merged_df: {out_file}")
+
+    return merged_df
 
 
 
@@ -229,14 +344,14 @@ if __name__ == "__main__":
         "CELL101": [],
     }
     # =======================
-    # for cell in CELLS:
-    #     build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
-    # build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix="newdf_global")
+    DRT = True
     
-    # Non-remove version
-    for cell in CELLS:
-        build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
-    save_filename_prefix = f"fulldf_removeAb_date_{soc_range}SOC" #NOTE: Modify the path when necessary
-    build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix=save_filename_prefix)
-
-    
+    if not DRT:
+        for cell in CELLS:
+            build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
+        save_filename_prefix = f"fulldf_removeAb_date_{soc_range}SOC" #NOTE: Modify the path when necessary
+        build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix=save_filename_prefix)
+    else:
+        save_filename_prefix = f"drtdf_date_{soc_range}SOC"
+        # save_filename_prefix = f"drtdf_removeAb_date_{soc_range}SOC"
+        build_drt_merged_df(cells=CELLS,Temp_map=TEMP_MAP, soc_range=soc_range, remove_SOH=False, remove_SOHidx=REMOVE_SOHidxS, save_filename_prefix=save_filename_prefix)
