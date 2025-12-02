@@ -300,7 +300,7 @@ if __name__ == "__main__":
     ECM_tag = "ECMv9"
     obj_func = "RMSE"
     num_trials = 100
-    soc_range = "G25" # all, "Gxx" (v > xx), "GEQxx" (v >= xx), "Lxx" (v < xx), "LEQxx" (v <= xx); where xx is an integer or float (referring to SOC percentage, e.g. soc_range = "G25")
+    soc_range = "G40" # all, "Gxx" (v > xx), "GEQxx" (v >= xx), "Lxx" (v < xx), "LEQxx" (v <= xx); where xx is an integer or float (referring to SOC percentage, e.g. soc_range = "G25")
     stats = "all"
     # ====== CONFIGURE ======
     ROOT_DIR = Path("ECM_Params_Estimation")
@@ -315,7 +315,7 @@ if __name__ == "__main__":
         "CELL009": [],
         "CELL021": [],
         "CELL077": [],
-        "CELL013": [],
+        "CELL013": ["20240106"],
         "CELL042": ["20230324"],
         "CELL045": [],
         "CELL050": ["20230404"],
@@ -327,11 +327,11 @@ if __name__ == "__main__":
         "CELL070": [],
         "CELL101": [],
     }
-    REMOVE_SOHidxS = { #NOTE: Remove duplicate Capacity [index version 1-based] (see summary doc table) | Remove Abnormal
+    REMOVE_SOHidxS = { #NOTE: Remove duplicate Capacity [index version 1-based from high to low] (see summary doc table) | Remove Abnormal
         "CELL009": [],
         "CELL021": [],
         "CELL077": [],
-        "CELL013": [],
+        "CELL013": [2],
         "CELL042": [3],
         "CELL045": [],
         "CELL050": [2],
@@ -344,12 +344,12 @@ if __name__ == "__main__":
         "CELL101": [],
     }
     # =======================
-    DRT = True
+    DRT = False
     
     if not DRT:
         for cell in CELLS:
             build_per_cell_merged_df(cell, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, remove_SOHidx=REMOVE_SOHidxS[cell])
-        save_filename_prefix = f"fulldf_removeAb_date_{soc_range}SOC" #NOTE: Modify the path when necessary
+        save_filename_prefix = f"fulldf_removeAbOod_date_{soc_range}SOC" #NOTE: Modify the path when necessary
         build_global_cells_df(CELLS, TEMP_MAP, ECM_name, ECM_tag, obj_func, num_trials, soc_range, stats, remove_SOH=True, save_filename_prefix=save_filename_prefix)
     else:
         save_filename_prefix = f"drtdf_date_{soc_range}SOC"

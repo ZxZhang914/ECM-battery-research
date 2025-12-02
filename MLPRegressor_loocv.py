@@ -295,7 +295,7 @@ def plot_aggregated_val_test(df_perf_val, df_perf_test, color_map=None, save_dir
 # =====================================================
 def main():
     # Load data
-    df_all = pd.read_csv("fulldf_removeAb_date_G25SOC_all.csv", index_col=0)
+    df_all = pd.read_csv("fulldf_removeAbOod_date_G25SOC_all.csv", index_col=0)
     df_all = df_all[df_all["Temp"] == 25]  # Use only 25°C data
     #NOTE: Exclude some cells
     # mask = df_all["CELL"].isin(["CELL090", "CELL096", "CELL042", "CELL050"])
@@ -356,7 +356,7 @@ def main():
 
         # Evaluate
         exp_tag = "_Exp3_reducedSOC" if REDUCED_TRAINING else ""
-        plot_dir = f"MLP_plots/LOOCV25_removeAbCells_{exp_tag}/Rs_SOC/{test_cell}/" #NOTE: change save dir
+        plot_dir = f"MLP_plots/LOOCV25_removeAbOodCells_{exp_tag}/Rs_SOC/{test_cell}/" #NOTE: change save dir
         os.makedirs(plot_dir, exist_ok=True)
 
         train_df_vis, train_mae, train_rmse, train_mape, train_r2 = evaluate_and_plot(
