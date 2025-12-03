@@ -12,6 +12,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib as mpl
+import argparse
 
 from MLPModel import *
 
@@ -294,16 +295,33 @@ def plot_aggregated_val_test(df_perf_val, df_perf_test, color_map=None, save_dir
 # Main Leave-One-Cell-Out
 # =====================================================
 def main():
+    parser = argparse.ArgumentParser(description="MLP Regressor Leave-One-Cell-Out Cross-Validation")
+    
+    parser.add_argument("--partial_SOC", action="store_true", help="Use reduced training samples (Experiment 3 condition)")
+    parser.add_argument("--input", "-i", type=str, default="fulldf_removeAbOod_date_G25SOC_all.csv", help="Input CSV data file")
+    parser.add_argument("--output", "-o", type=str, default="MLP_plots/LOOCV25", help="Output directory for plots and results")
+    parser.add_argument("--features", "-f", type=str, nargs="+", default=["R0", "R1", "R2", "R3", "SOC"], help="List of feature columns to use")
+    
+    args = parser.parse_args()
+   
+    REDUCED_TRAINING = args.partial_SOC
+    input_file = args.input
+    output_dir = args.output
+    FEATURES = args.features
+
+    TARGET = "SOH"
+
+    print("Using features:", FEATURES)
+    if REDUCED_TRAINING:
+        print("Using Partial SOC for training.")
+
     # Load data
-    df_all = pd.read_csv("fulldf_removeAbOod_date_G25SOC_all.csv", index_col=0)
+    df_all = pd.read_csv(input_file, index_col=0)
     df_all = df_all[df_all["Temp"] == 25]  # Use only 25°C data
     #NOTE: Exclude some cells
     # mask = df_all["CELL"].isin(["CELL090", "CELL096", "CELL042", "CELL050"])
     # df_all = df_all[~mask]
 
-
-    FEATURES = ["R0", "R1", "R2", "R3", "SOC"]
-    TARGET = "SOH"
 
     # Clean data
     df_all = df_all.dropna(subset=["CELL", "SOH", "SOC", "Temp"] + FEATURES)
@@ -321,7 +339,7 @@ def main():
     # --- Leave-One-Cell-Out Loop ---
     for test_cell in cells:
         print("\n" + "=" * 60)
-        print(f"🔹 Leave-One-Out: Testing on {test_cell}")
+        print(f"Leave-One-Out: Testing on {test_cell}")
 
         # Split normally
         X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test = \
@@ -331,7 +349,7 @@ def main():
         # =====================================================
         # 🔹 Experiment 3 condition: reduce training SOC samples
         # =====================================================
-        REDUCED_TRAINING = True  # NOTE: toggle here for Experiment 3
+        # REDUCED_TRAINING = True  # NOTE: toggle here for Experiment 3
         if REDUCED_TRAINING:
             df_train = reduce_training_samples(df_train, soc_col="SOC", soh_col="SOH")
             # Rebuild numpy arrays
@@ -356,7 +374,7 @@ def main():
 
         # Evaluate
         exp_tag = "_Exp3_reducedSOC" if REDUCED_TRAINING else ""
-        plot_dir = f"MLP_plots/LOOCV25_removeAbOodCells_{exp_tag}/Rs_SOC/{test_cell}/" #NOTE: change save dir
+        plot_dir = f"{output_dir}/{exp_tag}/{test_cell}/" #NOTE: change save dir
         os.makedirs(plot_dir, exist_ok=True)
 
         train_df_vis, train_mae, train_rmse, train_mape, train_r2 = evaluate_and_plot(

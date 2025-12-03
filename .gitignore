@@ -12,6 +12,10 @@ MLP_Experiments
 # Other Plots
 qc_plots
 ECM_Params_Analysis
+ECM_RC_Plotly
+ECM_RC_Plotly_SOCG40
+MLP_plots
+
 
 # All csv Files
 *.csv
