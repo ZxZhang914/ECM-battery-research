@@ -13,17 +13,23 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib as mpl
 import argparse
+import random
 
 from MLPModel import *
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-SEED = 42
-np.random.seed(SEED)
-torch.manual_seed(SEED)
+
 
 # =====================================================
 # Helper Functions
 # =====================================================
+def set_global_seed(seed: int):
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
 def build_cell_colormap(metadata, shade_min=0.30, shade_max=0.90):
     default_maps = {0: "Blues", 25: "Greens", 45: "Reds"}
     groups = {}
@@ -301,19 +307,22 @@ def main():
     parser.add_argument("--input", "-i", type=str, default="fulldf_removeAbOod_date_G25SOC_all.csv", help="Input CSV data file")
     parser.add_argument("--output", "-o", type=str, default="MLP_plots/LOOCV25", help="Output directory for plots and results")
     parser.add_argument("--features", "-f", type=str, nargs="+", default=["R0", "R1", "R2", "R3", "SOC"], help="List of feature columns to use")
-    
+    parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4], help="Random seeds for repeated MLP runs per cell")
+
     args = parser.parse_args()
    
     REDUCED_TRAINING = args.partial_SOC
     input_file = args.input
     output_dir = args.output
     FEATURES = args.features
+    SEEDS = args.seeds
 
     TARGET = "SOH"
 
     print("Using features:", FEATURES)
     if REDUCED_TRAINING:
         print("Using Partial SOC for training.")
+    print("Using seeds:", SEEDS)
 
     # Load data
     df_all = pd.read_csv(input_file, index_col=0)
@@ -341,105 +350,169 @@ def main():
         print("\n" + "=" * 60)
         print(f"Leave-One-Out: Testing on {test_cell}")
 
-        # Split normally
-        X_train, X_val, X_test, y_train, y_val, y_test, df_train, df_val, df_test = \
+        # Split once per cell so data splits are the same across seeds
+        X_train_base, X_val_base, X_test_base, y_train_base, y_val_base, y_test_base, \
+            df_train_base, df_val_base, df_test_base = \
             split_leave_one_out(df_all, leave_out_cell=test_cell,
                                 features=FEATURES, target=TARGET)
 
-        # =====================================================
-        # 🔹 Experiment 3 condition: reduce training SOC samples
-        # =====================================================
-        # REDUCED_TRAINING = True  # NOTE: toggle here for Experiment 3
-        if REDUCED_TRAINING:
-            df_train = reduce_training_samples(df_train, soc_col="SOC", soh_col="SOH")
-            # Rebuild numpy arrays
-            X_train = df_train[FEATURES].values.astype(np.float32)
-            y_train = df_train[TARGET].values.astype(np.float32)
+        for seed in SEEDS:
+            print(f"\n--- MLP Run with Seed {seed} ---")
+            set_global_seed(seed)
+            
+            # Copy numpy arrays / dataframes so we don’t overwrite base
+            X_train = X_train_base.copy()
+            X_val   = X_val_base.copy()
+            X_test  = X_test_base.copy()
+            y_train = y_train_base.copy()
+            y_val   = y_val_base.copy()
+            y_test  = y_test_base.copy()
+            df_train = df_train_base.copy()
+            df_val   = df_val_base.copy()
+            df_test  = df_test_base.copy()
 
-        # Standardize using training stats only
-        scaler = StandardScaler()
-        X_train = scaler.fit_transform(X_train)
-        X_val = scaler.transform(X_val)
-        X_test = scaler.transform(X_test)
+            # EXP3 Setup: reduced SOC training (Partial SOC for training)
+            if REDUCED_TRAINING:
+                df_train = reduce_training_samples(df_train, soc_col="SOC", soh_col="SOH")
+                X_train = df_train[FEATURES].values.astype(np.float32)
+                y_train = df_train[TARGET].values.astype(np.float32)
 
-        # DataLoaders
-        train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
-        val_loader = DataLoader(TabDataset(X_val, y_val), batch_size=256, shuffle=False)
+            # Standardize using training stats only
+            scaler = StandardScaler()
+            X_train = scaler.fit_transform(X_train)
+            X_val = scaler.transform(X_val)
+            X_test = scaler.transform(X_test)
 
-        # Model #NOTE: may adjust architecture here
-        model = MLPRegressor(in_dim=len(FEATURES), hidden=[64, 32], p_drop=0.1).to(DEVICE)
+            # DataLoaders
+            train_loader = DataLoader(TabDataset(X_train, y_train), batch_size=128, shuffle=True)
+            val_loader = DataLoader(TabDataset(X_val, y_val), batch_size=256, shuffle=False)
 
-        # Train
-        model = train(model, train_loader, val_loader, epochs=400)
+            # Model #NOTE: may adjust architecture here
+            model = MLPRegressor(in_dim=len(FEATURES), hidden=[64, 32], p_drop=0.1).to(DEVICE)
 
-        # Evaluate
-        exp_tag = "_Exp3_reducedSOC" if REDUCED_TRAINING else ""
-        plot_dir = f"{output_dir}/{exp_tag}/{test_cell}/" #NOTE: change save dir
-        os.makedirs(plot_dir, exist_ok=True)
+            # Train
+            model = train(model, train_loader, val_loader, epochs=400)
 
-        train_df_vis, train_mae, train_rmse, train_mape, train_r2 = evaluate_and_plot(
-            model, X_train, y_train, df_train, f"Train — Leave-Out {test_cell}", 
-            color_map, plot_dir, "train"
-        )
+            # Evaluate
+            plot_dir = f"{output_dir}/{test_cell}/seed{seed}" #NOTE: change save dir
+            os.makedirs(plot_dir, exist_ok=True)
 
-        val_df_vis, val_mae, val_rmse, val_mape, val_r2 = evaluate_and_plot(
-            model, X_val, y_val, df_val, f"Validation — Leave-Out {test_cell}", 
-            color_map, plot_dir, "val"
-        )
+            train_df_vis, train_mae, train_rmse, train_mape, train_r2 = evaluate_and_plot(
+                model, X_train, y_train, df_train, f"Train — Leave-Out {test_cell}", 
+                color_map, plot_dir, "train"
+            )
 
-        test_df_vis, test_mae, test_rmse, test_mape, test_r2 = evaluate_and_plot(
-            model, X_test, y_test, df_test, f"Test — Leave-Out {test_cell}", 
-            color_map, plot_dir, "test"
-        )
+            val_df_vis, val_mae, val_rmse, val_mape, val_r2 = evaluate_and_plot(
+                model, X_val, y_val, df_val, f"Validation — Leave-Out {test_cell}", 
+                color_map, plot_dir, "val"
+            )
 
-        # Combined val+test visualization
-        plot_val_test_together(val_df_vis, test_df_vis, color_map, plot_dir,
-                            tag="combined", title=f"Validation vs Test — Leave-Out {test_cell}")
+            test_df_vis, test_mae, test_rmse, test_mape, test_r2 = evaluate_and_plot(
+                model, X_test, y_test, df_test, f"Test — Leave-Out {test_cell}", 
+                color_map, plot_dir, "test"
+            )
 
-        results.append({
-            "test_cell": test_cell,
-            "train_R2": train_r2, "val_R2": val_r2, "test_R2": test_r2,
-            "train_MAE": train_mae, "val_MAE": val_mae, "test_MAE": test_mae,
-            "train_RMSE": train_rmse, "val_RMSE": val_rmse, "test_RMSE": test_rmse,
-            "train_MAPE": train_mape, "val_MAPE": val_mape, "test_MAPE": test_mape,
-        })
+            # Combined val+test visualization
+            plot_val_test_together(val_df_vis, test_df_vis, color_map, plot_dir,
+                                tag="combined", title=f"Validation vs Test — Leave-Out {test_cell}")
 
-         # ================================================================
-        # Compute and visualize aggregated results
-        # ================================================================
-        df_val_performance = compute_group_performance(val_df_vis)
-        df_test_performance = compute_group_performance(test_df_vis)
+            results.append({
+                "test_cell": test_cell,
+                "seed": seed,
+                "train_R2": train_r2, "val_R2": val_r2, "test_R2": test_r2,
+                "train_MAE": train_mae, "val_MAE": val_mae, "test_MAE": test_mae,
+                "train_RMSE": train_rmse, "val_RMSE": val_rmse, "test_RMSE": test_rmse,
+                "train_MAPE": train_mape, "val_MAPE": val_mape, "test_MAPE": test_mape,
+            })
 
-        # Save
-        df_val_performance.to_csv(f"{plot_dir}/MLP_predictions_valset_aggregated.csv", index=False)
-        df_test_performance.to_csv(f"{plot_dir}/MLP_predictions_testset_aggregated.csv", index=False)
+            # ================================================================
+            # Compute and visualize aggregated results
+            # ================================================================
+            df_val_performance = compute_group_performance(val_df_vis)
+            df_test_performance = compute_group_performance(test_df_vis)
 
-        # Evaluate aggregated performance
-        val_agg_mae, val_agg_rmse, val_agg_mape, val_agg_r2 = eval_model(df_val_performance, "Validation (Aggregated)", aggregate=True)
-        test_agg_mae, test_agg_rmse, test_agg_mape, test_agg_r2 = eval_model(df_test_performance, "Test (Aggregated)", aggregate=True)
+            # Save
+            df_val_performance.to_csv(f"{plot_dir}/MLP_predictions_valset_aggregated.csv", index=False)
+            df_test_performance.to_csv(f"{plot_dir}/MLP_predictions_testset_aggregated.csv", index=False)
 
-        # Plot aggregated performance
-        plot_aggregated_val_test(df_val_performance, df_test_performance, color_map, save_dir=plot_dir)
+            # Evaluate aggregated performance
+            val_agg_mae, val_agg_rmse, val_agg_mape, val_agg_r2 = eval_model(df_val_performance, "Validation (Aggregated)", aggregate=True)
+            test_agg_mae, test_agg_rmse, test_agg_mape, test_agg_r2 = eval_model(df_test_performance, "Test (Aggregated)", aggregate=True)
 
-        agg_results.append({
-            "test_cell": test_cell,
-            "val_agg_R2": val_agg_r2, "test_agg_R2": test_agg_r2,
-            "val_agg_MAE": val_agg_mae, "test_agg_MAE": test_agg_mae,
-            "val_agg_RMSE": val_agg_rmse, "test_agg_RMSE": test_agg_rmse,
-            "val_agg_MAPE": val_agg_mape, "test_agg_MAPE": test_agg_mape,
-        })
+            # Plot aggregated performance
+            plot_aggregated_val_test(df_val_performance, df_test_performance, color_map, save_dir=plot_dir)
+
+            agg_results.append({
+                "test_cell": test_cell,
+                "seed": seed,
+                "val_agg_R2": val_agg_r2, "test_agg_R2": test_agg_r2,
+                "val_agg_MAE": val_agg_mae, "test_agg_MAE": test_agg_mae,
+                "val_agg_RMSE": val_agg_rmse, "test_agg_RMSE": test_agg_rmse,
+                "val_agg_MAPE": val_agg_mape, "test_agg_MAPE": test_agg_mape,
+            })
 
 
-    # Save summary
+    # Save per-seed summary
     results_df = pd.DataFrame(results)
-    # results_df.to_csv(f"MLP_LOOCV_results{exp_tag}.csv", index=False)
-    # print(f"\nSaved all LOOCV results → MLP_LOOCV_results_{exp_tag}.csv")
-    print("\n=== Leave-One-Out Summary ===")
-    print(results_df[["test_cell", "test_R2", "test_MAE", "test_RMSE", "test_MAPE"]].round(4))
-
     agg_results_df = pd.DataFrame(agg_results)
-    print("\n=== Leave-One-Out Agg Summary ===")
-    print(agg_results_df[["test_cell", "test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]].round(4))
+
+    print("\n=== Per-seed Leave-One-Out Summary (raw) ===")
+    print(results_df[["test_cell", "seed", "test_R2", "test_MAE", "test_RMSE", "test_MAPE"]].round(4))
+
+    # ------- Average over seeds for each cell -------
+    cell_summary = (
+        results_df
+        .groupby("test_cell")
+        .agg(
+            test_R2_mean=("test_R2", "mean"),
+            test_R2_std=("test_R2", "std"),
+            test_MAE_mean=("test_MAE", "mean"),
+            test_MAE_std=("test_MAE", "std"),
+            test_RMSE_mean=("test_RMSE", "mean"),
+            test_RMSE_std=("test_RMSE", "std"),
+            test_MAPE_mean=("test_MAPE", "mean"),
+            test_MAPE_std=("test_MAPE", "std"),
+        )
+        .reset_index()
+    )
+
+    print("\n=== Per-cell Test Performance (mean ± std over seeds) ===")
+    print(cell_summary.round(4))
+
+    # Overall averages across all cells & seeds
+    overall_means = results_df[["test_R2", "test_MAE", "test_RMSE", "test_MAPE"]].mean()
+    overall_stds  = results_df[["test_R2", "test_MAE", "test_RMSE", "test_MAPE"]].std()
+
+    print("\n=== Overall Test Performance across all cells & seeds ===")
+    for metric in ["test_R2", "test_MAE", "test_RMSE", "test_MAPE"]:
+        print(f"{metric}: {overall_means[metric]:.4f} ± {overall_stds[metric]:.4f}")
+
+    # ---- Aggregated version (middle 50%) ----
+    print("\n=== Aggregated Per-cell Test Performance (mean ± std over seeds) ===")
+    agg_cell_summary = (
+        agg_results_df
+        .groupby("test_cell")
+        .agg(
+            test_agg_R2_mean=("test_agg_R2", "mean"),
+            test_agg_R2_std=("test_agg_R2", "std"),
+            test_agg_MAE_mean=("test_agg_MAE", "mean"),
+            test_agg_MAE_std=("test_agg_MAE", "std"),
+            test_agg_RMSE_mean=("test_agg_RMSE", "mean"),
+            test_agg_RMSE_std=("test_agg_RMSE", "std"),
+            test_agg_MAPE_mean=("test_agg_MAPE", "mean"),
+            test_agg_MAPE_std=("test_agg_MAPE", "std"),
+        )
+        .reset_index()
+    )
+    print(agg_cell_summary.round(4))
+
+    # Aggregated Overall averages across all cells & seeds
+    overall_means = agg_results_df[["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]].mean()
+    overall_stds  = agg_results_df[["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]].std()
+
+    print("\n=== Overall Test Performance across all cells & seeds (Aggregated middle 50%) ===")
+    for metric in ["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]:
+        print(f"{metric}: {overall_means[metric]:.4f} ± {overall_stds[metric]:.4f}")
 
 
 

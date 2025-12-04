@@ -7,15 +7,16 @@ import matplotlib as mpl
 import argparse
 import json
 import os
-
-
-SEED = 42
-np.random.seed(SEED)
+import random
 
 
 # =====================================================
 # Define helper functions
 # =====================================================
+def set_global_seed(seed: int):
+    np.random.seed(seed)
+    random.seed(seed)
+
 def build_cell_colormap(metadata, shade_min=0.30, shade_max=0.90):
     default_maps = {0: "Blues", 25: "Greens", 45: "Reds"}
     groups = {}
@@ -199,18 +200,21 @@ def main():
     parser.add_argument("--input", "-i", type=str, default="fulldf_removeAbOod_date_G25SOC_all.csv", help="Input CSV data file")
     parser.add_argument("--output", "-o", type=str, default="MLP_plots/LOOCV25", help="Output directory for plots and results")
     parser.add_argument("--features", "-f", type=str, nargs="+", default=["R0", "R1", "R2", "R3", "SOC"], help="List of feature columns to use")
-    
+    parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4], help="Random seeds for repeated MLP runs per cell")
+
     args = parser.parse_args()
    
     REDUCED_TRAINING = args.partial_SOC
     input_file = args.input
     output_dir = args.output
     FEATURES = args.features
+    SEEDS = args.seeds
+
 
     print("Using features:", FEATURES)
     if REDUCED_TRAINING:
         print("Using Partial SOC for training.")
-
+    print("Using seeds:", SEEDS)
 
     # Load data
     df_all = pd.read_csv(input_file, index_col=0)
@@ -226,100 +230,128 @@ def main():
         metadata = json.load(f)
     COLOR_MAP = build_cell_colormap(metadata)
 
-
-    # To store results
-    results = []
+    # To store per-seed, per-cell results
+    records = []
 
     # --- Leave-One-Cell-Out Loop ---
     for test_cell in cells:
         print("\n" + "=" * 60)
         print(f"Leave-One-Out: Testing on {test_cell}")
 
-        train_df = df_all[df_all["CELL"] != test_cell].copy()
+         # Prepare data subsets (same for all seeds)
+        base_train_df = df_all[df_all["CELL"] != test_cell].copy()
+        base_test_df  = df_all[df_all["CELL"] == test_cell].copy()
+
         # =====================================================
         # (Optional) Apply SOC reduction — Experiment 3 condition
         # =====================================================
-        # REDUCED_TRAINING = False  # NOTE: toggle ON for Experiment 3
         if REDUCED_TRAINING:
-            train_df = reduce_training_samples(train_df)
-        test_df = df_all[df_all["CELL"] == test_cell].copy()
-        print(f"Train shape: {train_df.shape}, Test shape: {test_df.shape}")
-
-        # Compute training means/stds
-        train_means = {col: train_df[col].mean() for col in FEATURES }
-        train_stds  = {col: train_df[col].std(ddof=0) for col in FEATURES}
-
-        # Standardize both train/test using training stats
-        for col in FEATURES: #NOTE: standardized features
-            train_df[f"{col}_z"] = zscore_with_stats(train_df[col], train_means[col], train_stds[col])
-            test_df[f"{col}_z"]  = zscore_with_stats(test_df[col], train_means[col], train_stds[col])
-
-        # Fit OLS model
-        rhs_terms = " + ".join(f"{col}_z" for col in FEATURES)
-        formula = f"SOH ~ {rhs_terms}"
-        print("OLS formula:", formula)
-
-        ols = smf.ols(formula, data=train_df).fit()
-        print(ols.summary())
-
-        # Predict
-        train_df["_pred_OLS"] = ols.predict(train_df)
-        test_df["_pred_OLS"]  = ols.predict(test_df)
-
-        # Evaluate
-        train_metrics = evaluate(train_df["SOH"], train_df["_pred_OLS"], "Training")
-        test_metrics  = evaluate(test_df["SOH"], test_df["_pred_OLS"], f"Testing (CELL={test_cell})")
-        exp_tag = "_Exp3_reducedSOC" if REDUCED_TRAINING else ""
-        plot_dir = f"{output_dir}/{exp_tag}/{test_cell}/" #NOTE: change save dir
-        os.makedirs(plot_dir, exist_ok=True)
+            base_train_df = reduce_training_samples(base_train_df)
         
-        # Plot raw
-        plot_pred_vs_actual_loo(train_df, test_df, test_cell, aggregate=False, color_map=COLOR_MAP, save_dir=plot_dir)
-        
-        # aggregated performance
-        train_perf_df = compute_group_performance(train_df)
-        test_perf_df  = compute_group_performance(test_df)
-        # Save
-        train_perf_df.to_csv(f"{plot_dir}/LR_predictions_valset_aggregated.csv", index=False)
-        test_perf_df.to_csv(f"{plot_dir}/LR_predictions_testset_aggregated.csv", index=False)
-        
-        
-        train_agg_metrics = eval_model(train_perf_df, "Aggregate Training", aggregate=True)
-        test_agg_metrics = eval_model(test_perf_df, f"Aggregate Testing (CELL={test_cell})", aggregate=True)
-        
-        # Plot aggregated
-        plot_pred_vs_actual_loo(train_perf_df, test_perf_df, test_cell, aggregate=True, color_map=COLOR_MAP, save_dir=plot_dir)
-        
-        # Store metrics
-        results.append({
-            "Cell": test_cell,
-            "R2_train": train_metrics[0],
-            "MAE_train": train_metrics[1],
-            "RMSE_train": train_metrics[2],
-            "MAPE_train": train_metrics[3],
-            "R2_test": test_metrics[0],
-            "MAE_test": test_metrics[1],
-            "RMSE_test": test_metrics[2],
-            "MAPE_test": test_metrics[3],
-            "R2_train_agg": train_agg_metrics[0],
-            "MAE_train_agg": train_agg_metrics[1],
-            "RMSE_train_agg": train_agg_metrics[2],
-            "MAPE_train_agg": train_agg_metrics[3],
-            "R2_test_agg": test_agg_metrics[0],
-            "MAE_test_agg": test_agg_metrics[1],
-            "RMSE_test_agg": test_agg_metrics[2],
-            "MAPE_test_agg": test_agg_metrics[3],
-        })
+        for seed in SEEDS: # Note: Actually, stats model is deterministic (without changing partial SOC splits)
+            # Copy train/test so we don't overwrite base data
+            train_df = base_train_df.copy()
+            test_df  = base_test_df.copy()
 
+            # Standardization stats from training only
+            train_means = {col: train_df[col].mean() for col in FEATURES}
+            train_stds  = {col: train_df[col].std(ddof=0) for col in FEATURES}
 
-    # Save Result
-    results_df = pd.DataFrame(results)
-    exp_tag = "_Exp3_reducedSOC" if REDUCED_TRAINING else ""
-    results_df.to_csv(f"{output_dir}/ols_leave_one_cell_out_metrics{exp_tag}.csv", index=False)
-    print(f"\nSaved metrics to {output_dir}/ols_leave_one_cell_out_metrics{exp_tag}.csv")
+            for col in FEATURES:
+                train_df[f"{col}_z"] = zscore_with_stats(train_df[col], train_means[col], train_stds[col])
+                test_df[f"{col}_z"]  = zscore_with_stats(test_df[col],  train_means[col], train_stds[col])
 
-    print("\n=== Overall Summary ===")
-    print(results_df[["Cell", "R2_test", "MAE_test", "RMSE_test", "MAPE_test", "R2_test_agg", "MAE_test_agg", "RMSE_test_agg", "MAPE_test_agg"]])
+            # Build dynamic formula
+            rhs_terms = " + ".join(f"{col}_z" for col in FEATURES)
+            formula = f"SOH ~ {rhs_terms}"
+            print("OLS formula:", formula)
+
+            # Fit
+            ols = smf.ols(formula, data=train_df).fit()
+            print(ols.summary())
+
+            plot_dir = f"{output_dir}/{test_cell}/seed{seed}" #NOTE: change save dir
+            os.makedirs(plot_dir, exist_ok=True)
+
+            # Predict
+            train_df["_pred_OLS"] = ols.predict(train_df)
+            test_df["_pred_OLS"]  = ols.predict(test_df)
+
+            # Raw metrics
+            train_metrics = evaluate(train_df["SOH"], train_df["_pred_OLS"], f"Train seed={seed}")
+            test_metrics  = evaluate(test_df["SOH"],  test_df["_pred_OLS"], f"Test CELL={test_cell}, seed={seed}")
+
+            # Aggregated (middle 50%)
+            train_perf_df = compute_group_performance(train_df)
+            test_perf_df  = compute_group_performance(test_df)
+            # Save
+            train_perf_df.to_csv(f"{plot_dir}/LR_predictions_trainset_aggregated.csv", index=False)
+            test_perf_df.to_csv(f"{plot_dir}/LR_predictions_testset_aggregated.csv", index=False)
+
+            train_agg = eval_model(train_perf_df, "Agg Train", aggregate=True)
+            test_agg  = eval_model(test_perf_df,  "Agg Test",  aggregate=True)
+
+            # Save record
+            records.append({
+                "Cell": test_cell,
+                "Seed": seed,
+                "R2_raw": test_metrics[0],
+                "MAE_raw": test_metrics[1],
+                "RMSE_raw": test_metrics[2],
+                "MAPE_raw": test_metrics[3],
+                "R2_agg":  test_agg[0],
+                "MAE_agg": test_agg[1],
+                "RMSE_agg":test_agg[2],
+                "MAPE_agg":test_agg[3],
+            })
+
+    # =====================================================
+    # Convert to DataFrame
+    # =====================================================
+    results_df = pd.DataFrame(records)
+
+    save_path = f"{output_dir}/ols_seeded_LOOCV_results.csv"
+    os.makedirs(output_dir, exist_ok=True)
+    results_df.to_csv(save_path, index=False)
+    print(f"\nSaved all seed-level results -> {save_path}")
+
+    # =====================================================
+    # Averages over seeds per cell
+    # =====================================================
+    print("\n=== Per-cell Mean ± Std over seeds (RAW) ===")
+    summary_raw = (
+        results_df
+        .groupby("Cell")
+        .agg(
+            R2_mean=("R2_raw","mean"),   R2_std=("R2_raw","std"),
+            MAE_mean=("MAE_raw","mean"), MAE_std=("MAE_raw","std"),
+            RMSE_mean=("RMSE_raw","mean"), RMSE_std=("RMSE_raw","std"),
+            MAPE_mean=("MAPE_raw","mean"), MAPE_std=("MAPE_raw","std"),
+        )
+    )
+    print(summary_raw.round(4))
+
+    print("\n=== Per-cell Mean ± Std over seeds (AGGREGATED) ===")
+    summary_agg = (
+        results_df
+        .groupby("Cell")
+        .agg(
+            R2_mean=("R2_agg","mean"),   R2_std=("R2_agg","std"),
+            MAE_mean=("MAE_agg","mean"), MAE_std=("MAE_agg","std"),
+            RMSE_mean=("RMSE_agg","mean"), RMSE_std=("RMSE_agg","std"),
+            MAPE_mean=("MAPE_agg","mean"), MAPE_std=("MAPE_agg","std"),
+        )
+    )
+    print(summary_agg.round(4))
+
+    # =====================================================
+    # Overall averages across all cells & seeds
+    # =====================================================
+    print("\n=== Overall Performance Across All Seeds & Cells ===")
+    for col in ["MAE_raw","RMSE_raw","MAPE_raw","MAE_agg","RMSE_agg","MAPE_agg"]:
+        mean = results_df[col].mean()
+        std  = results_df[col].std()
+        print(f"{col}: {mean:.4f} ± {std:.4f}")
 
 
 if __name__ == "__main__":
