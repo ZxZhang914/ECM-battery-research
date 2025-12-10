@@ -308,6 +308,7 @@ def main():
     parser.add_argument("--output", "-o", type=str, default="MLP_plots/LOOCV25", help="Output directory for plots and results")
     parser.add_argument("--features", "-f", type=str, nargs="+", default=["R0", "R1", "R2", "R3", "SOC"], help="List of feature columns to use")
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4], help="Random seeds for repeated MLP runs per cell")
+    parser.add_argument("--print_agg", action="store_true", help="Print aggregated performance per cell")
 
     args = parser.parse_args()
    
@@ -316,6 +317,7 @@ def main():
     output_dir = args.output
     FEATURES = args.features
     SEEDS = args.seeds
+    PRINT_AGG = args.print_agg
 
     TARGET = "SOH"
 
@@ -428,6 +430,8 @@ def main():
             # ================================================================
             # Compute and visualize aggregated results
             # ================================================================
+            if not PRINT_AGG:
+                continue  # Skip aggregated performance if not requested
             df_val_performance = compute_group_performance(val_df_vis)
             df_test_performance = compute_group_performance(test_df_vis)
 
@@ -454,7 +458,8 @@ def main():
 
     # Save per-seed summary
     results_df = pd.DataFrame(results)
-    agg_results_df = pd.DataFrame(agg_results)
+    if PRINT_AGG:
+        agg_results_df = pd.DataFrame(agg_results)
 
     print("\n=== Per-seed Leave-One-Out Summary (raw) ===")
     print(results_df[["test_cell", "seed", "test_R2", "test_MAE", "test_RMSE", "test_MAPE"]].round(4))
@@ -475,7 +480,7 @@ def main():
         )
         .reset_index()
     )
-
+    
     print("\n=== Per-cell Test Performance (mean ± std over seeds) ===")
     print(cell_summary.round(4))
 
@@ -487,32 +492,33 @@ def main():
     for metric in ["test_R2", "test_MAE", "test_RMSE", "test_MAPE"]:
         print(f"{metric}: {overall_means[metric]:.4f} ± {overall_stds[metric]:.4f}")
 
-    # ---- Aggregated version (middle 50%) ----
-    print("\n=== Aggregated Per-cell Test Performance (mean ± std over seeds) ===")
-    agg_cell_summary = (
-        agg_results_df
-        .groupby("test_cell")
-        .agg(
-            test_agg_R2_mean=("test_agg_R2", "mean"),
-            test_agg_R2_std=("test_agg_R2", "std"),
-            test_agg_MAE_mean=("test_agg_MAE", "mean"),
-            test_agg_MAE_std=("test_agg_MAE", "std"),
-            test_agg_RMSE_mean=("test_agg_RMSE", "mean"),
-            test_agg_RMSE_std=("test_agg_RMSE", "std"),
-            test_agg_MAPE_mean=("test_agg_MAPE", "mean"),
-            test_agg_MAPE_std=("test_agg_MAPE", "std"),
+    if PRINT_AGG:
+        # ---- Aggregated version (middle 50%) ----
+        print("\n=== Aggregated Per-cell Test Performance (mean ± std over seeds) ===")
+        agg_cell_summary = (
+            agg_results_df
+            .groupby("test_cell")
+            .agg(
+                test_agg_R2_mean=("test_agg_R2", "mean"),
+                test_agg_R2_std=("test_agg_R2", "std"),
+                test_agg_MAE_mean=("test_agg_MAE", "mean"),
+                test_agg_MAE_std=("test_agg_MAE", "std"),
+                test_agg_RMSE_mean=("test_agg_RMSE", "mean"),
+                test_agg_RMSE_std=("test_agg_RMSE", "std"),
+                test_agg_MAPE_mean=("test_agg_MAPE", "mean"),
+                test_agg_MAPE_std=("test_agg_MAPE", "std"),
+            )
+            .reset_index()
         )
-        .reset_index()
-    )
-    print(agg_cell_summary.round(4))
+        print(agg_cell_summary.round(4))
 
-    # Aggregated Overall averages across all cells & seeds
-    overall_means = agg_results_df[["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]].mean()
-    overall_stds  = agg_results_df[["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]].std()
+        # Aggregated Overall averages across all cells & seeds
+        overall_means = agg_results_df[["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]].mean()
+        overall_stds  = agg_results_df[["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]].std()
 
-    print("\n=== Overall Test Performance across all cells & seeds (Aggregated middle 50%) ===")
-    for metric in ["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]:
-        print(f"{metric}: {overall_means[metric]:.4f} ± {overall_stds[metric]:.4f}")
+        print("\n=== Overall Test Performance across all cells & seeds (Aggregated middle 50%) ===")
+        for metric in ["test_agg_R2", "test_agg_MAE", "test_agg_RMSE", "test_agg_MAPE"]:
+            print(f"{metric}: {overall_means[metric]:.4f} ± {overall_stds[metric]:.4f}")
 
 
 

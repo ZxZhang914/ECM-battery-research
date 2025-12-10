@@ -151,11 +151,164 @@ data = [
 {"TestID": 7, "Model": "DNN", "Cell": "CELL054", "MAPE_mean": 0.77, "MAPE_std": 0.21},
 {"TestID": 7, "Model": "DNN", "Cell": "CELL076", "MAPE_mean": 1.35, "MAPE_std": 1.14},
 
+# ======================================================
+# Test 8 — [SOC>40%, no SOC as predictor] 6 cells + partial SOC
+# ======================================================
+# LR
+{"TestID": 8, "Model": "LR", "Cell": "CELL013", "MAPE_mean": 1.93, "MAPE_std": np.nan},
+{"TestID": 8, "Model": "LR", "Cell": "CELL042", "MAPE_mean": 3.80, "MAPE_std": np.nan},
+{"TestID": 8, "Model": "LR", "Cell": "CELL045", "MAPE_mean": 1.56, "MAPE_std": np.nan},
+{"TestID": 8, "Model": "LR", "Cell": "CELL050", "MAPE_mean": 3.65, "MAPE_std": np.nan},
+{"TestID": 8, "Model": "LR", "Cell": "CELL054", "MAPE_mean": 0.42, "MAPE_std": np.nan},
+{"TestID": 8, "Model": "LR", "Cell": "CELL076", "MAPE_mean": 0.92, "MAPE_std": np.nan},
+
+# DNN
+{"TestID": 8, "Model": "DNN", "Cell": "CELL013", "MAPE_mean": 1.17, "MAPE_std": 0.30},
+{"TestID": 8, "Model": "DNN", "Cell": "CELL042", "MAPE_mean": 53.42, "MAPE_std": 6.78},
+{"TestID": 8, "Model": "DNN", "Cell": "CELL045", "MAPE_mean": 3.77, "MAPE_std": 1.02},
+{"TestID": 8, "Model": "DNN", "Cell": "CELL050", "MAPE_mean": 18.30, "MAPE_std": 0.83},
+{"TestID": 8, "Model": "DNN", "Cell": "CELL054", "MAPE_mean": 1.92, "MAPE_std": 1.41},
+{"TestID": 8, "Model": "DNN", "Cell": "CELL076", "MAPE_mean": 2.12, "MAPE_std": 1.13},
+
+# ======================================================
+# Test 9 — [DRT SOC>25%] 8 cells LOOCV (no SOC as predictor)
+# ======================================================
+
+# LR
+{"TestID": 9, "Model": "LR", "Cell": "CELL013", "MAPE_mean": 3.18, "MAPE_std": np.nan},
+{"TestID": 9, "Model": "LR", "Cell": "CELL042", "MAPE_mean": 2.99, "MAPE_std": np.nan},
+{"TestID": 9, "Model": "LR", "Cell": "CELL045", "MAPE_mean": 0.90, "MAPE_std": np.nan},
+{"TestID": 9, "Model": "LR", "Cell": "CELL050", "MAPE_mean": 2.30, "MAPE_std": np.nan},
+{"TestID": 9, "Model": "LR", "Cell": "CELL054", "MAPE_mean": 0.62, "MAPE_std": np.nan},
+{"TestID": 9, "Model": "LR", "Cell": "CELL076", "MAPE_mean": 0.19, "MAPE_std": np.nan},
+{"TestID": 9, "Model": "LR", "Cell": "CELL090", "MAPE_mean": 1.48, "MAPE_std": np.nan},
+{"TestID": 9, "Model": "LR", "Cell": "CELL096", "MAPE_mean": 2.08, "MAPE_std": np.nan},
+
+# DNN (mean; std)
+{"TestID": 9, "Model": "DNN", "Cell": "CELL013", "MAPE_mean": 4.93, "MAPE_std": 1.30},
+{"TestID": 9, "Model": "DNN", "Cell": "CELL042", "MAPE_mean": 3.79, "MAPE_std": 2.02},
+{"TestID": 9, "Model": "DNN", "Cell": "CELL045", "MAPE_mean": 1.21, "MAPE_std": 0.82},
+{"TestID": 9, "Model": "DNN", "Cell": "CELL050", "MAPE_mean": 5.68, "MAPE_std": 0.87},
+{"TestID": 9, "Model": "DNN", "Cell": "CELL054", "MAPE_mean": 7.15, "MAPE_std": 2.98},
+{"TestID": 9, "Model": "DNN", "Cell": "CELL076", "MAPE_mean": 1.33, "MAPE_std": 0.41},
+{"TestID": 9, "Model": "DNN", "Cell": "CELL090", "MAPE_mean": 4.81, "MAPE_std": 2.08},
+{"TestID": 9, "Model": "DNN", "Cell": "CELL096", "MAPE_mean": 2.35, "MAPE_std": 0.56},
+
+
+# ======================================================
+# Test 10 — [DRT SOC>25%] 8 cells LOOCV with partial SOC (no SOC as predictor)
+# ======================================================
+
+# LR
+{"TestID": 10, "Model": "LR", "Cell": "CELL013", "MAPE_mean": 3.62, "MAPE_std": np.nan},
+{"TestID": 10, "Model": "LR", "Cell": "CELL042", "MAPE_mean": 2.93, "MAPE_std": np.nan},
+{"TestID": 10, "Model": "LR", "Cell": "CELL045", "MAPE_mean": 1.19, "MAPE_std": np.nan},
+{"TestID": 10, "Model": "LR", "Cell": "CELL050", "MAPE_mean": 2.47, "MAPE_std": np.nan},
+{"TestID": 10, "Model": "LR", "Cell": "CELL054", "MAPE_mean": 1.03, "MAPE_std": np.nan},
+{"TestID": 10, "Model": "LR", "Cell": "CELL076", "MAPE_mean": 0.20, "MAPE_std": np.nan},
+{"TestID": 10, "Model": "LR", "Cell": "CELL090", "MAPE_mean": 1.77, "MAPE_std": np.nan},
+{"TestID": 10, "Model": "LR", "Cell": "CELL096", "MAPE_mean": 1.91, "MAPE_std": np.nan},
+
+# DNN
+{"TestID": 10, "Model": "DNN", "Cell": "CELL013", "MAPE_mean": 6.45, "MAPE_std": 1.66},
+{"TestID": 10, "Model": "DNN", "Cell": "CELL042", "MAPE_mean": 4.50, "MAPE_std": 1.47},
+{"TestID": 10, "Model": "DNN", "Cell": "CELL045", "MAPE_mean": 1.48, "MAPE_std": 0.38},
+{"TestID": 10, "Model": "DNN", "Cell": "CELL050", "MAPE_mean": 6.75, "MAPE_std": 0.77},
+{"TestID": 10, "Model": "DNN", "Cell": "CELL054", "MAPE_mean": 7.08, "MAPE_std": 2.77},
+{"TestID": 10, "Model": "DNN", "Cell": "CELL076", "MAPE_mean": 1.62, "MAPE_std": 0.89},
+{"TestID": 10, "Model": "DNN", "Cell": "CELL090", "MAPE_mean": 6.76, "MAPE_std": 4.13},
+{"TestID": 10, "Model": "DNN", "Cell": "CELL096", "MAPE_mean": 2.45, "MAPE_std": 0.79},
+
 ]
 
 df = pd.DataFrame(data)
 print(df.head())
 
+
+# 1) consistent order for cells & TestIDs
+cells = sorted(df["Cell"].unique())
+test_ids = sorted(df["TestID"].unique())
+
+x = np.arange(len(cells))          # base x-locations for cell groups
+n_tests = len(test_ids)
+offset_width = 0.6 / n_tests       # how much to shift each test's dots
+
+# color per TestID
+color_map = {tid: f"C{i}" for i, tid in enumerate(test_ids)}
+
+plt.figure(figsize=(14, 6))
+
+test_ids = [9,10]
+
+for i, tid in enumerate(test_ids):
+    df_t = df[df["TestID"] == tid]
+
+    # compute horizontal offset for this test
+    offset = (i - (n_tests - 1) / 2) * offset_width
+
+    # ----- LR (just dots) -----
+    df_lr = df_t[df_t["Model"] == "LR"].set_index("Cell").reindex(cells)
+    lr_mean = df_lr["MAPE_mean"].to_numpy(dtype=float)
+    mask_lr = ~np.isnan(lr_mean)
+
+    plt.scatter(
+        x[mask_lr] + offset,
+        lr_mean[mask_lr],
+        color=color_map[tid],
+        marker="D",
+        s=40,
+        edgecolors="black",
+        linewidths=0.6,
+        # label=f"Test {tid} - LR"
+    )
+
+    # ----- DNN (dot + error bar) -----
+    df_dnn = df_t[df_t["Model"] == "DNN"].set_index("Cell").reindex(cells)
+    dnn_mean = df_dnn["MAPE_mean"].to_numpy(dtype=float)
+    dnn_std  = df_dnn["MAPE_std"].to_numpy(dtype=float)
+    mask_dnn = ~np.isnan(dnn_mean)
+
+    plt.errorbar(
+        x[mask_dnn] + offset,
+        dnn_mean[mask_dnn],
+        yerr=dnn_std[mask_dnn],
+        fmt="o",
+        color=color_map[tid],
+        ecolor=color_map[tid],
+        elinewidth=1.2,
+        capsize=3,
+        markersize=5,
+        label=f"Test {tid} - DNN"
+    )
+
+# 2) Formatting
+plt.xticks(x, cells)
+plt.ylabel("MAPE (%)")
+plt.xlabel("Test Cell")
+plt.title("MAPE per Cell: LR (dimond) and DNN (dot ± std) across Test IDs")
+plt.grid(axis="y", linestyle="--", alpha=0.4)
+
+# Legend: only show LR and DNN once
+handles, labels = plt.gca().get_legend_handles_labels()
+seen = {}
+ordered_handles = []
+ordered_labels = []
+
+for h, l in zip(handles, labels):
+    if l not in seen:
+        seen[l] = True
+        ordered_handles.append(h)
+        ordered_labels.append(l)
+
+plt.legend(ordered_handles, ordered_labels, loc="upper right")
+
+plt.tight_layout()
+
+# dynamic y-limit
+max_val = (df["MAPE_mean"] + df["MAPE_std"].fillna(0)).max()
+plt.ylim(0, max_val * 1.2)
+plt.ylim(0, 14)
+plt.show()
 
 
 
@@ -210,7 +363,7 @@ plt.title("MAPE comparison across tests (LR vs DNN)")
 plt.grid(True, linestyle="--", alpha=0.4)
 plt.legend()
 plt.tight_layout()
-plt.ylim(0, 5)
+# plt.ylim(0, 5)
 plt.show()
 
 
@@ -224,8 +377,9 @@ import numpy as np
 # -------------------------------------------------------------
 
 test_ids = sorted(df["TestID"].unique())
+test_ids = [9, 10]
 
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(14, 6))
 
 # We create one subplot per test
 n_tests = len(test_ids)
@@ -241,7 +395,7 @@ for ax, tid in zip(axes, test_ids):
     # ---------- DNN data ----------
     dnn = df_t[df_t["Model"] == "DNN"]
     dnn_values = dnn["MAPE_mean"].values
-    dnn_stds = dnn["MAPE_std"].values
+
 
     # Boxplot for DNN
     bp = ax.boxplot(
@@ -253,33 +407,34 @@ for ax, tid in zip(axes, test_ids):
         medianprops=dict(color='black'),
     )
 
-    # Add DNN mean with std bar (optional)
-    ax.errorbar(
-        x=[1.15],
-        y=[np.mean(dnn_values)],
-        yerr=[np.std(dnn_values)],
-        fmt="o",
-        color="blue",
-        label="DNN mean ± std"
-    )
-
     # ---------- LR data ----------
     lr = df_t[df_t["Model"] == "LR"]
-    lr_mean = lr["MAPE_mean"].mean()
+    lr_values = lr["MAPE_mean"].values
+
 
     # Plot LR mean as a single dot
-    ax.scatter(
-        [1.6],
-        [lr_mean],
-        color="red",
-        s=80,
-        label="LR mean"
+    # ax.scatter(
+    #     [1.6],
+    #     [lr_mean],
+    #     color="red",
+    #     s=80,
+    #     label="LR mean"
+    # )
+    bp = ax.boxplot(
+        lr_values,
+        positions=[1.6],
+        widths=0.5,
+        patch_artist=True,
+        boxprops=dict(facecolor='lightpink', color='pink'),
+        medianprops=dict(color='black'),
     )
+
 
     # ---------- Labels ----------
     ax.set_title(f"Test {tid}", fontsize=14)
     ax.set_xticks([1, 1.6])
-    ax.set_xticklabels(["DNN\n(box)", "LR\n(dot)"])
+    ax.set_xticklabels(["DNN\n", "LR\n"])
+    ax.set_ylim(0, 10)
     ax.grid(True, linestyle='--', alpha=0.5)
 
 # Only one legend
@@ -287,5 +442,5 @@ handles, labels = ax.get_legend_handles_labels()
 fig.legend(handles, labels, loc='upper right', fontsize=12)
 
 fig.suptitle("MAPE Comparison per Test: DNN Boxplot vs LR Mean Dot", fontsize=16)
-plt.tight_layout(rect=[0,0,0.93,0.95])
+plt.tight_layout(rect=[0.03,0.03,0.93,0.95])
 plt.show()
