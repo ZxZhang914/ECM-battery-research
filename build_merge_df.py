@@ -13,48 +13,70 @@ from Fitting_algo_v4 import *
 from utils import load_cell_meta_EIS_data
 
 
- # HelperFunc: Apply SOC-range filter logic
-import re
+# HelperFunc: Apply SOC-range filter logic (regular expression module)
+import re 
 
 def soc_in_range(v, soc_range):
     """
-    soc_range expected formats:
-    - "all"
-    - "Gxx"     -> v > xx
-    - "GEQxx"   -> v >= xx
-    - "Lxx"     -> v < xx
-    - "LEQxx"   -> v <= xx
-    where xx is an integer or float (percentage).
-
-    Example:
-        soc_range = "G25"    -> v > 0.25
-        soc_range = "LEQ40"  -> v <= 0.40
+    Supports:
+        - "all"
+        - Single-sided:
+            "Gxx", "GEQxx", "Lxx", "LEQxx"
+        - Double-sided combined ranges (any order):
+            "G25L40"       -> 0.25 < v < 0.40
+            "GEQ20L50"     -> 0.20 <= v < 0.50
+            "G10LEQ60"     -> 0.10 < v <= 0.60
+            "GEQ5LEQ95"    -> 0.05 <= v <= 0.95
     """
+
     # Allow no filtering
     if soc_range == "all":
         return True
 
-    # Match patterns like G25, GEQ25, L30, LEQ30, G12.5, etc.
-    m = re.fullmatch(r"(G|GEQ|L|LEQ)(\d+(?:\.\d+)?)", soc_range)
-    if not m:
-        raise ValueError(
-            "soc_range must be 'all' or of form Gxx, GEQxx, Lxx, LEQxx where xx is a number."
-        )
+    # First check for combined range: e.g. G25L40, GEQ20LEQ80, ...
+    m2 = re.fullmatch(
+        r"(G|GEQ)(\d+(?:\.\d+)?)(L|LEQ)(\d+(?:\.\d+)?)",
+        soc_range
+    )
+    if m2:
+        lower_op, lower_val_str, upper_op, upper_val_str = m2.groups()
+        lower = float(lower_val_str) / 100.0
+        upper = float(upper_val_str) / 100.0
 
-    op, val_str = m.groups()
-    threshold = float(val_str) / 100.0  # convert xx → 0.xx
+        # Lower bound check
+        if lower_op == "G" and not (v > lower):
+            return False
+        if lower_op == "GEQ" and not (v >= lower):
+            return False
 
-    if op == "G":
-        return v > threshold
-    if op == "GEQ":
-        return v >= threshold
-    if op == "L":
-        return v < threshold
-    if op == "LEQ":
-        return v <= threshold
+        # Upper bound check
+        if upper_op == "L" and not (v < upper):
+            return False
+        if upper_op == "LEQ" and not (v <= upper):
+            return False
 
-    # Should never reach this
-    raise ValueError(f"Unhandled operator: {op}")
+        return True
+
+    # Check for single operator formats
+    m1 = re.fullmatch(r"(G|GEQ|L|LEQ)(\d+(?:\.\d+)?)", soc_range)
+    if m1:
+        op, val_str = m1.groups()
+        threshold = float(val_str) / 100.0
+
+        if op == "G":
+            return v > threshold
+        if op == "GEQ":
+            return v >= threshold
+        if op == "L":
+            return v < threshold
+        if op == "LEQ":
+            return v <= threshold
+
+    # If nothing matched
+    raise ValueError(
+        "Invalid soc_range format. Expected 'all', Gxx, GEQxx, Lxx, LEQxx, "
+        "or combined range like G25L40 or GEQ10LEQ90."
+    )
 
 
 
@@ -300,7 +322,7 @@ if __name__ == "__main__":
     ECM_tag = "ECMv9"
     obj_func = "RMSE"
     num_trials = 100
-    soc_range = "G40" # all, "Gxx" (v > xx), "GEQxx" (v >= xx), "Lxx" (v < xx), "LEQxx" (v <= xx); where xx is an integer or float (referring to SOC percentage, e.g. soc_range = "G25")
+    soc_range = "G40L80" # all, "Gxx" (v > xx), "GEQxx" (v >= xx), "Lxx" (v < xx), "LEQxx" (v <= xx); where xx is an integer or float (referring to SOC percentage, e.g. soc_range = "G25")
     stats = "all"
     # ====== CONFIGURE ======
     ROOT_DIR = Path("ECM_Params_Estimation")
