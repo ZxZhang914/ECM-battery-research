@@ -147,6 +147,7 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
             soh_val = soh_data["capacity"]
             soc_val = soh_data["soc"][soc_i]
             test_date = soh_data["date"]
+            
 
            
             if not soc_in_range(soc_val, soc_range):
@@ -157,6 +158,8 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
                 rows["date"] = test_date
                 rows["SOH"] = soh_val
                 rows["SOC"] = soc_val
+                rows['SOH_label'] = soh_i+1
+                rows['SOC_label'] = soc_i+1
                 result_rows.append(rows)
                 continue
 
@@ -175,6 +178,8 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
             row_df["date"] = test_date
             row_df["SOH"] = soh_val
             row_df["SOC"] = soc_val
+            rows['SOH_label'] = soh_i+1
+            rows['SOC_label'] = soc_i+1
             result_rows.append(row_df)
 
     # Concatenate to build dataframe
