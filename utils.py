@@ -129,7 +129,7 @@ def EIS_Nyquist_meas_vs_fit_save(
 
     ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.6)
     fig.tight_layout()
-    return fig   # 🔑 return the figure handle
+    return fig
 
 
 def tau_vec(R, Q, n):
