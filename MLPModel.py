@@ -115,7 +115,7 @@ def train(model, train_loader, val_loader=None, epochs=400):
 
         train_loss = running / len(train_loader.dataset)
 
-        # ✅ Validation step (optional)
+        #Validation step (optional)
         if val_loader is not None:
             val_mae, val_rmse, val_mape = evaluate(val_loader, model)
             scheduler.step(val_mae)
@@ -128,12 +128,12 @@ def train(model, train_loader, val_loader=None, epochs=400):
                 print(f"Early stop at epoch {ep}. Best val MAE: {early.best:.4f}")
                 break
         else:
-            # ✅ No validation — just print training loss and step scheduler on it
+            #No validation — just print training loss and step scheduler on it
             scheduler.step(train_loss)
             if ep % 10 == 0 or ep == 1:
                 print(f"Epoch {ep:03d} | train_RMSE: {math.sqrt(train_loss):.4f}")
 
-    # ✅ Load best weights if early stopping was used (and val_loader existed)
+    #Load best weights if early stopping was used (and val_loader existed)
     if val_loader is not None:
         early.load_best(model)
 
