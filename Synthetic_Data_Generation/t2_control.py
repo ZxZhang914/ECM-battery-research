@@ -203,7 +203,7 @@ def main():
     print(f"95th pct T2(A): {np.quantile(T2_A_all, 0.95):.6g}")
 
     print("\n=== Threshold ===")
-    print(f"h = {h:.6g}  (this corresponds to {(1-alpha)*100:.1f}th percentile envelope)")
+    print(f"h = {h:.6g}")
 
     print("\n=== Cluster B scored vs A ===")
     print(f"Within threshold: {count_within}/{nB} = {100*frac_within:.2f}%")
