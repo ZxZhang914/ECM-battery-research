@@ -12,6 +12,9 @@ Usage:
   python t2_control.py --a A.csv --b B.csv --threshold empirical_split --split 0.7 --seed 0
   python t2_control.py --a A.csv --b B.csv --threshold parametric
   python t2_control.py --a A.csv --b B.csv --shrinkage ledoitwolf --threshold parametric
+
+
+  python .\t2_control.py --a .\synthetic_ecm_soh_ind_25C_10k.csv --b .\original_45C.csv --threshold parametric     
 """
 
 import argparse
@@ -210,6 +213,7 @@ def main():
     print(f"Median T2(B): {np.median(T2_B):.6g}")
     print(f"95th pct T2(B): {np.quantile(T2_B, 0.95):.6g}")
     print(f"Max T2(B): {np.max(T2_B):.6g}")
+    print(f"Min T2(B): {np.min(T2_B):.6g}")
 
     # --- Plots ---
     if not args.no_plots:
