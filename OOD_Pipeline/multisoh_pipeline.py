@@ -12,13 +12,7 @@ from common import (
 
 #### Example Usage ####
 '''
-python multisoh_pipeline.py \
-  --baseline artifacts/baseline_model.pkl \
-  --data df.csv \
-  --cell-col cell_id \
-  --cell-order "CELL021,CELL077,CELL070, CELL032, CELL101" \
-  --threshold 0.1 \
-  --outdir artifacts
+python multisoh_pipeline.py --baseline artifacts/baseline_model.pkl --data ../fulldf_date_G40L80SOC_all.csv --cell-order "CELL090, CELL096,CELL021,CELL077,CELL070,CELL032,CELL101" --threshold 0.5 --outdir artifacts
 
 '''
 
@@ -73,7 +67,7 @@ def main():
     df["CELL"] = df["CELL"].astype(str)
 
     # Parse cell order
-    order = [x.strip() for x in args.cell-order.split(",") if x.strip()]
+    order = [x.strip() for x in args.cell_order.split(",") if x.strip()]
     if order is None: # Note by default include all cells in the df.
         order = sorted(df["CELL"].unique().tolist())
         print("No explicit order provided; using sorted unique cell ids from the file.")
@@ -82,9 +76,10 @@ def main():
     missing = [cid for cid in order if str(cid) not in avaliable]
     if missing:
         raise ValueError(f"These cell ids in the provided order are missing from the data: {missing[:20]}")
+    print("Cell processing order:", order)
     
     # Build cell -> dataframe map
-    grouped = dict(df.groupby("CELL", sort=False))
+    grouped = dict(tuple(df.groupby("CELL", sort=False)))
 
     registry = {
         "models": [baseline],
@@ -96,6 +91,7 @@ def main():
     for i, cell_id in enumerate(order, start=1):
         cell_id = str(cell_id)
         cell_df = grouped[cell_id].copy()
+        print(f"\nProcessing cell {cell_id} with {len(cell_df)} rows...")
 
         # Evaluate (OOD) against all existing models
         scored = []
@@ -122,6 +118,7 @@ def main():
 
         # OOD Threshold
         is_ood = best_met["pct_over_3sigma"] > args.threshold
+        print("This cell is considered", "OOD" if is_ood else "InD",)
 
         if is_ood: # build new model
             new_name = f"model_{registry['next_model_id']:03d}"
@@ -171,3 +168,12 @@ def main():
     print("\nPipeline finished.")
     print(f"Record saved to:   {record_path}")
     print(f"Registry saved to: {registry_path}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print("Error during multisoh_pipeline execution:")
+        print(e)
+        raise e
