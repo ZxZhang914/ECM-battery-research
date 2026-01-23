@@ -178,8 +178,8 @@ def build_per_cell_merged_df(cell_name, ECM_name, ECM_tag, obj_func, num_trials,
             row_df["date"] = test_date
             row_df["SOH"] = soh_val
             row_df["SOC"] = soc_val
-            rows['SOH_label'] = soh_i+1
-            rows['SOC_label'] = soc_i+1
+            row_df['SOH_label'] = soh_i+1
+            row_df['SOC_label'] = soc_i+1
             result_rows.append(row_df)
 
     # Concatenate to build dataframe
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     obj_func = "RMSE"
     num_trials = 100
     soc_range = "G40L80" # all, "Gxx" (v > xx), "GEQxx" (v >= xx), "Lxx" (v < xx), "LEQxx" (v <= xx); where xx is an integer or float (referring to SOC percentage, e.g. soc_range = "G25")
-    stats = "all"
+    stats = "best" # "all", "median", "mean", "best"
     # ====== CONFIGURE ======
     ROOT_DIR = Path("ECM_Params_Estimation")
     #EXPECTED_COLS = ["R0","R1","R2","R3","C1","n1","C2","n2","C3","n3","Aw","SOH","SOC"]

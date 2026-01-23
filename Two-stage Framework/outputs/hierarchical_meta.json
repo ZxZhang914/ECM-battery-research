@@ -1,0 +1,26 @@
+{
+  "clustering_method": "hierarchical",
+  "soh_estimator_mode": "mean",
+  "feature_cols": [
+    "R0",
+    "R1",
+    "R2",
+    "R3",
+    "C1",
+    "n1",
+    "C2",
+    "n2",
+    "C3",
+    "n3",
+    "Aw"
+  ],
+  "id_cols": [
+    "CELL",
+    "SOH_label",
+    "SOC_label"
+  ],
+  "metrics": {
+    "mae": 0.0015168650793746519,
+    "rmse": 0.004566394951183019
+  }
+}

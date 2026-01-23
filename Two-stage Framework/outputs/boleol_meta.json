@@ -1,0 +1,26 @@
+{
+  "clustering_method": "boleol",
+  "soh_estimator_mode": "mean",
+  "feature_cols": [
+    "R0",
+    "R1",
+    "R2",
+    "R3",
+    "C1",
+    "n1",
+    "C2",
+    "n2",
+    "C3",
+    "n3",
+    "Aw"
+  ],
+  "id_cols": [
+    "CELL",
+    "SOH_label",
+    "SOC_label"
+  ],
+  "metrics": {
+    "mae": 0.013517201278637345,
+    "rmse": 0.018647570667157946
+  }
+}
