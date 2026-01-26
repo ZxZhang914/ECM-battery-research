@@ -4,6 +4,7 @@ Matlab_Result
 
 # Subfolder Results Outputs
 MLP_Transfer_Learning_Calibration/outputs
+Two-stage Framework/outputs
 
 # Experiment Results
 LR_Experiments
@@ -15,7 +16,10 @@ ECM_Params_Analysis
 ECM_RC_Plotly
 ECM_RC_Plotly_SOCG40
 MLP_plots
+cell_distance_heatmaps
 
 
 # All csv Files
 *.csv
+# All png Files
+*.png   
