@@ -1,0 +1,26 @@
+# ECM Fitting Data
+ECM_Params_Estimation
+Matlab_Result
+
+# Subfolder Results Outputs
+MLP_Transfer_Learning_Calibration/outputs
+Two-stage Framework/outputs
+OOD_Pipeline/artifacts
+
+# Experiment Results
+LR_Experiments
+MLP_Experiments
+
+# Other Plots
+qc_plots
+ECM_Params_Analysis
+ECM_RC_Plotly
+ECM_RC_Plotly_SOCG40
+MLP_plots
+cell_distance_heatmaps
+
+
+# All csv Files
+*.csv
+# All png Files
+*.png
