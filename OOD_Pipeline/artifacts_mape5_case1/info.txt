@@ -1,0 +1,121 @@
+--------------------------------------- Fit Baseline ----------------------------------------
+cmd: python fit_baseline.py --csv ../fulldf_date_removeAbOod_G40L80SOC_all.csv --target SOH --outdir artifacts
+
+Filtering SOC between 0.4 and 0.8
+Saved baseline model to artifacts/baseline_model.pkl and metadata to artifacts/baseline_model_meta.json
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                    SOH   R-squared:                       0.983
+Model:                            OLS   Adj. R-squared:                  0.983
+Method:                 Least Squares   F-statistic:                 7.762e+04
+Date:                Wed, 14 Jan 2026   Prob (F-statistic):               0.00
+Time:                        23:00:03   Log-Likelihood:                 9618.9
+No. Observations:                5251   AIC:                        -1.923e+04
+Df Residuals:                    5246   BIC:                        -1.920e+04
+Df Model:                           4                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const          3.0279      0.001   5660.301      0.000       3.027       3.029
+R0            -0.0510      0.001    -69.996      0.000      -0.052      -0.050
+R1            -0.0380      0.001    -43.380      0.000      -0.040      -0.036
+R2            -0.3263      0.002   -182.505      0.000      -0.330      -0.323
+R3             0.1042      0.002     66.813      0.000       0.101       0.107
+==============================================================================
+Omnibus:                      713.381   Durbin-Watson:                   0.011
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              259.027
+Skew:                           0.325   Prob(JB):                     5.66e-57
+Kurtosis:                       2.128   Cond. No.                         7.56
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+--------------------------------------- Pipeline ----------------------------------------
+python multisoh_pipeline.py --baseline artifacts/baseline_model.pkl --data ../fulldf_date_G40L80SOC_all.csv --cell-order "CELL090, CELL096,CELL021,CELL077,CELL070,CELL032,CELL101" --threshold-type mape --threshold 5 --outdir artifacts
+
+Cell processing order: ['CELL090', 'CELL096', 'CELL021', 'CELL077', 'CELL070', 'CELL032', 'CELL101']
+
+Processing cell CELL090 with 1500 rows...
+
+--- Scored summary for cell: CELL090 ---
+model           pct>3 sigma    mape(%)       rmse        mae      n
+---------------------------------------------------------------------
+baseline            0.3693     4.0066     0.1181     0.1153   1500
+This cell is considered InD
+Chosen model prediction results: MAPE=4.0066%, MAE=0.1153, RMSE=0.1181
+[1/7] cell=CELL090 -> in_dist_use_existing (baseline)
+
+Processing cell CELL096 with 1136 rows...
+
+--- Scored summary for cell: CELL096 ---
+model           pct>3 sigma    mape(%)       rmse        mae      n
+---------------------------------------------------------------------
+baseline            0.2817     3.1835     0.1122     0.1034   1136
+This cell is considered InD
+Chosen model prediction results: MAPE=3.1835%, MAE=0.1034, RMSE=0.1122
+[2/7] cell=CELL096 -> in_dist_use_existing (baseline)
+
+Processing cell CELL021 with 939 rows...
+
+--- Scored summary for cell: CELL021 ---
+model           pct>3 sigma    mape(%)       rmse        mae      n
+---------------------------------------------------------------------
+baseline            0.5698    14.2474     0.3151     0.2632    939
+This cell is considered OOD
+New model 'model_001' fitted. Prediction results: MAPE=1.2436%, MAE=0.0229, RMSE=0.0304
+[3/7] cell=CELL021 -> ood_new_model_fitted (model_001)
+
+Processing cell CELL077 with 1235 rows...
+
+--- Scored summary for cell: CELL077 ---
+model           pct>3 sigma    mape(%)       rmse        mae      n
+---------------------------------------------------------------------
+baseline            0.7393    17.2235     0.4520     0.3805   1235
+model_001           0.4891    42.3225     1.2864     0.7749   1235
+This cell is considered OOD
+New model 'model_002' fitted. Prediction results: MAPE=0.5960%, MAE=0.0145, RMSE=0.0171
+[4/7] cell=CELL077 -> ood_new_model_fitted (model_002)
+
+Processing cell CELL070 with 502 rows...
+
+--- Scored summary for cell: CELL070 ---
+model           pct>3 sigma    mape(%)       rmse        mae      n
+---------------------------------------------------------------------
+baseline            0.5777    10.5956     0.4139     0.3024    502
+model_001           1.0000    97.2215     3.5982     2.8022    502
+model_002           1.0000   218.6076    10.6106     6.0727    502
+This cell is considered OOD
+New model 'model_003' fitted. Prediction results: MAPE=0.0478%, MAE=0.0014, RMSE=0.0021
+[5/7] cell=CELL070 -> ood_new_model_fitted (model_003)
+
+Processing cell CELL032 with 491 rows...
+
+--- Scored summary for cell: CELL032 ---
+model           pct>3 sigma    mape(%)       rmse        mae      n
+---------------------------------------------------------------------
+baseline            1.0000    26.3336     0.7966     0.7739    491
+model_001           1.0000   200.5508     5.9195     5.8939    491
+model_002           1.0000   281.0114     8.4904     8.2586    491
+model_003           1.0000     4.5961     0.1450     0.1351    491
+This cell is considered InD
+Chosen model prediction results: MAPE=4.5961%, MAE=0.1351, RMSE=0.1450
+[6/7] cell=CELL032 -> in_dist_use_existing (model_003)
+
+Processing cell CELL101 with 486 rows...
+
+--- Scored summary for cell: CELL101 ---
+model           pct>3 sigma    mape(%)       rmse        mae      n
+---------------------------------------------------------------------
+baseline            0.4177    13.3995     0.5807     0.3797    486
+model_001           1.0000   134.3932     5.1513     3.8983    486
+model_002           1.0000   322.6831    13.6606     9.1848    486
+model_003           1.0000     4.6873     0.1457     0.1454    486
+This cell is considered InD
+Chosen model prediction results: MAPE=4.6873%, MAE=0.1454, RMSE=0.1457
+[7/7] cell=CELL101 -> in_dist_use_existing (model_003)
+
+Pipeline finished.
+Record saved to:   artifacts/pipeline_record.csv
+Registry saved to: artifacts/model_registry.pkl

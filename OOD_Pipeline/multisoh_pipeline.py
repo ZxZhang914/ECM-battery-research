@@ -3,16 +3,26 @@ import glob
 import argparse
 import pandas as pd
 
+import statsmodels.api as sm
+
 from common import (
     load_pickle,
     save_pickle,
     eval_payload_on_df,
     fit_ols_payload,
+    visualize_ols_results_payload,
+    visualize_multi_payload_predictions
 )
 
 #### Example Usage ####
 '''
 python multisoh_pipeline.py --baseline artifacts/baseline_model.pkl --data ../fulldf_date_G40L80SOC_all.csv --cell-order "CELL090, CELL096,CELL021,CELL077,CELL070,CELL032,CELL101" --threshold 0.5 --outdir artifacts
+
+MAPE threshold=5%:
+python multisoh_pipeline.py --baseline artifacts/baseline_model.pkl --data ../fulldf_date_G40L80SOC_all.csv --cell-order "CELL090, CELL096,CELL021,CELL077,CELL070,CELL032,CELL101" --threshold-type mape --threshold 5 --outdir artifacts
+
+MAPE 5% case 2(change order):
+python multisoh_pipeline.py --baseline artifacts/baseline_model.pkl --data ../fulldf_date_G40L80SOC_all.csv --cell-order "CELL096,CELL090,CELL077,CELL021,CELL101,CELL070,CELL032" --threshold-type mape --threshold 5 --outdir artifacts
 
 '''
 
@@ -20,13 +30,14 @@ python multisoh_pipeline.py --baseline artifacts/baseline_model.pkl --data ../fu
 
 def print_scored_summary(cell_id, scored):
     print("\n--- Scored summary for cell:", cell_id, "---")
-    print(f"{'model':<15} {'pct>3 sigma':>10} {'rmse':>10} {'mae':>10} {'n':>6}")
-    print("-" * 55)
+    print(f"{'model':<15} {'pct>3 sigma':>10} {'mape(%)':>10} {'rmse':>10} {'mae':>10} {'n':>6}")
+    print("-" * 69)
 
     for m, met in scored:
         print(
             f"{m['name']:<15} "
             f"{met['pct_over_3sigma']:>10.4f} "
+            f"{met['mape']:>10.4f} "
             f"{met['rmse']:>10.4f} "
             f"{met['mae']:>10.4f} "
             f"{met['n']:>6d}"
@@ -46,6 +57,7 @@ def main():
     parser.add_argument("--soc-max", type=float, default=0.8,
                     help="Maximum SOC (inclusive), float number")
     
+    parser.add_argument("--threshold-type", default="pct_over_3sigma", help="OOD threshold type (default=pct_over_3sigma), other options: rmse, mae, mape")
     parser.add_argument("--threshold", type=float, default=0.1,  help="OOD threshold t (default=0.1)")
     parser.add_argument("--outdir", default="artifacts", help="Output directory (default=artifacts)")
     parser.add_argument("--record-name", default="pipeline_record.csv", help="Record CSV filename")
@@ -111,13 +123,22 @@ def main():
             continue
         
         print_scored_summary(cell_id, scored)
+        visualize_multi_payload_predictions(
+            cell_df,
+            payloads=[m for m, _ in scored],
+            axis_limits=(1.25, 4.25),
+            save_path=f"{args.outdir}/{cell_id}_multi_model_predictions.png",
+        )
 
-        # Choose best: lowest pct_over_3sigma, tie-break rmse
-        scored.sort(key=lambda x: (x[1]["pct_over_3sigma"], x[1]["rmse"]))
+        # Choose best: lowest args.threshold_type, tie-break rmse (rarely)
+        if args.threshold_type not in met:
+            raise ValueError(f"Threshold type '{args.threshold_type}' not found in metrics.")
+        
+        scored.sort(key=lambda x: (x[1][args.threshold_type], x[1]["rmse"]))
         best_model, best_met = scored[0]
 
         # OOD Threshold
-        is_ood = best_met["pct_over_3sigma"] > args.threshold
+        is_ood = best_met[args.threshold_type] > args.threshold
         print("This cell is considered", "OOD" if is_ood else "InD",)
 
         if is_ood: # build new model
@@ -126,7 +147,7 @@ def main():
                 cell_df,
                 best_model["target_col"],
                 best_model["feature_cols"],
-                model_name=new_name,
+                model_name=new_name
             )
             registry["models"].append(new_payload)
             registry["next_model_id"] += 1
@@ -134,10 +155,16 @@ def main():
             chosen_model = new_name
             decision = "ood_new_model_fitted"
             chosen_met = eval_payload_on_df(new_payload, cell_df)
+            visualize_ols_results_payload(cell_df, new_payload, plot_name_suffix=f"(new:{new_name})", save_path=f"{args.outdir}/{cell_id}_new_model_results.png")
+            print(f"New model '{new_name}' fitted. Prediction results: MAPE={chosen_met['mape']:.4f}%, MAE={chosen_met['mae']:.4f}, RMSE={chosen_met['rmse']:.4f}")
         else:
             chosen_model = best_model["name"]
             decision = "in_dist_use_existing"
             chosen_met = best_met
+            # # Visualize results for in-distribution case as well
+            # visualize_ols_results_payload(cell_df, best_model, plot_name_suffix=f"(chosen:{chosen_model})", save_path=f"{args.outdir}/{cell_id}_chosen_model_results.png"
+            # )
+            print(f"Chosen model prediction results: MAPE={chosen_met['mape']:.4f}%, MAE={chosen_met['mae']:.4f}, RMSE={chosen_met['rmse']:.4f}")
 
         records.append({
             "cell_id": cell_id,
@@ -147,6 +174,7 @@ def main():
             "best_pct_over_3sigma_before_decision": best_met["pct_over_3sigma"],
             "best_rmse_before_decision": best_met["rmse"],
             "chosen_pct_over_3sigma": chosen_met["pct_over_3sigma"],
+            "chosen_mape": chosen_met["mape"],
             "chosen_rmse": chosen_met["rmse"],
             "chosen_mae": chosen_met["mae"],
             "n": chosen_met["n"],
@@ -155,6 +183,7 @@ def main():
         })
 
         print(f"[{i}/{len(order)}] cell={cell_id} -> {decision} ({chosen_model})")
+        
     
     
     # Save outputs
