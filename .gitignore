@@ -18,9 +18,8 @@ ECM_RC_Plotly
 ECM_RC_Plotly_SOCG40
 MLP_plots
 cell_distance_heatmaps
-
+# All png Files
+*.png
 
 # All csv Files
 *.csv
-# All png Files
-*.png
