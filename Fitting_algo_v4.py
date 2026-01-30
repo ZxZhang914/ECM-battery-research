@@ -16,6 +16,7 @@ INITIAL_GUESS = {
     "v3CM7":[0.005, 0.005, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.005, 0.9, 0.001], # v3CM7: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
     "v3CM8":[0.005, 0.005, 0.01, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.5, 0.9, 0.005, 0.9, 0.001], # v3CM8: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4, Aw
     "v3CM9":[0.005, 0.005, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.5, 0.9, 0.001], # v3CM9: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
+    "v3CM10":[0.00001, 0.005, 0.005, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.5, 0.9, 0.001], # v3CM10: L, R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
 }
 
 # predefined ECM Parameter Names Mapping
@@ -29,10 +30,11 @@ PARAMS_NAMES = {
     "v3CM7": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw"], # v3CM7: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
     "v3CM8": ["R0", "R1", "R2", "R3", "R4", "C1", "n1", "C2", "n2", "C3", "n3", "C4", "n4", "Aw"], # v3CM8: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4, Aw
     "v3CM9": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw"], # v3CM9: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
+    "v3CM10": ["L", "R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw"], # v3CM10: L, R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
 }
 
 # Bounds Mapping
-eps = 1e-7
+eps = 1e-9 # make it smaller (inductance can be very small)
 BOUNDS = {
     "v3CM1": [(eps, 100), (eps, 100), (eps, 100), (0.8, 1)], # v3CM1: R0, R1, C1, n1
     "v3CM2": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1)], # v3CM2: R0, R1, R2, C1, n1, n2, C2
@@ -43,11 +45,12 @@ BOUNDS = {
     "v3CM7": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100)], # v3CM7: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
     "v3CM8": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100)], # v3CM8: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4, Aw
     "v3CM9": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100)], # v3CM9: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
+    "v3CM10": [(eps, 1), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100)], # v3CM10: L, R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
 }
 
-ECM_NAMES = ["v3CM1","v3CM2","v3CM3","v3CM4","v3CM5","v3CM6", "v3CM7", "v3CM8", "v3CM9"]
+ECM_NAMES = ["v3CM1","v3CM2","v3CM3","v3CM4","v3CM5","v3CM6", "v3CM7", "v3CM8", "v3CM9", "v3CM10"]
 ECM_IMPEDANCE_FUNCS = [compute_v3CM1_impedance, compute_v3CM2_impedance, compute_v3CM3_impedance, compute_v3CM4_impedance,
-                       compute_v3CM5_impedance, compute_v3CM6_impedance, compute_v3CM7_impedance, compute_v3CM8_impedance, compute_v3CM9_impedance,]
+                       compute_v3CM5_impedance, compute_v3CM6_impedance, compute_v3CM7_impedance, compute_v3CM8_impedance, compute_v3CM9_impedance, compute_v3CM10_impedance]
 
 ECM_NUM_RCS = {
     "v3CM1": 1,
@@ -58,7 +61,8 @@ ECM_NUM_RCS = {
     "v3CM6": 1,
     "v3CM7": 2,
     "v3CM8": 3,
-    "v3CM9": 3
+    "v3CM9": 3,
+    "v3CM10": 3,
 }
 
 
@@ -72,6 +76,7 @@ EXPANDED_PARAMS_NAMES = {
     "v3CM7": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw", "tau1", "freq1", "tau2", "freq2"], # v3CM7
     "v3CM8": ["R0", "R1", "R2", "R3", "R4", "C1", "n1", "C2", "n2", "C3", "n3", "C4", "n4", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM8
     "v3CM9": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM9
+    "v3CM10": ["L", "R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM10
 }
 
 
@@ -245,8 +250,11 @@ def sort_by_tau(params, ECM_name):
         params = [R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val, sigma_val]
         params = [float(v) for v in params]
     
-    elif ECM_name == "v3CM9":
-        R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val = params
+    elif ECM_name == "v3CM9" or ECM_name == "v3CM10":
+        if ECM_name == "v3CM9":
+            R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val = params
+        else: # v3CM10
+            L_val, R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val = params
 
         RC_products = [compute_time_constant(R1_val, C1_val, n1_val), compute_time_constant(R2_val, C2_val, n2_val), compute_time_constant(R3_val, C3_val, n3_val)]
         sorted_indices = sorted(range(3), key=lambda i: RC_products[i])
@@ -263,7 +271,10 @@ def sort_by_tau(params, ECM_name):
         C1_val, C2_val, C3_val = sorted_C
         n1_val, n2_val, n3_val = sorted_n
 
-        params = [R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val]
+        if ECM_name == "v3CM9":
+            params = [R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val]
+        else: # v3CM10
+            params = [L_val, R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val]
         params = [float(v) for v in params]
     
     return [float(v) for v in params]
@@ -418,7 +429,7 @@ def perturb_initial_guess(base_guess, scale=0.2):
 
 
 
-def perturb_initial_guess_elementwise(base_guess, params_name=None, eps=1e-7,
+def perturb_initial_guess_elementwise(base_guess, params_name=None, eps=1e-9,
                           scale_map={'R': 0.5, 'C': 0.5, 'n': 0.1, 'w': 0.1}):
     """
     Perturb each parameter in base_guess based on its name/type using a specific scale.

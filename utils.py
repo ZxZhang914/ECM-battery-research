@@ -178,9 +178,9 @@ def ECM_parameter_estimation(ECM_model_name, target_battery_name, target_battery
 
             # find ECM candidates
             if ECM_model_name not in ECM_candidates_map:
-                print(f"[Warning] ECM_model_name '{ECM_model_name}' not found. Use 'v3CM7' as default."
+                print(f"[Warning] ECM_model_name '{ECM_model_name}' not found. Use 'v3CM9' as default."
                     f"Available options: {list(ECM_candidates_map.keys())}")
-                ECM_model_name = "v3CM7"
+                ECM_model_name = "v3CM9"
             ECM_candidate_impedance_func = ECM_candidates_map[ECM_model_name]
             
             # call fitting function

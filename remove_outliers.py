@@ -7,6 +7,7 @@ import seaborn as sns
 import json
 import glob
 import random
+import argparse
 from copy import deepcopy
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 from sklearn.decomposition import PCA
@@ -17,17 +18,34 @@ from Fitting_algo_v4 import *
 from ECM_impedance_v3 import *
 from utils import format_EIS, ECM_parameter_estimation
 
-# Configureation
-CELL_NAME = "CELL090"
-ECM_name = "v3CM9"
-ECM_tag = "ECMv9"
-obj_func = "RMSE"
-num_trials = 100
+# This script removes outliers from ECM parameter estimation results. To run this script, make sure you have ECM parameter estimation CSV files available.
+# based on multiple criteria including frequency limits, parameter bounds, rmse thresholds, r2 thresholds, and optional percentile-based filtering.
 
-remove_based_on_parameters_percentile = True  # If True, apply criterion 6
-pct_central = 0.95
+# Example usage:
+# python remove_outliers.py --cell-name CELL042 --ecm-name v3CM10 --obj-func RMSE --num-trials 100 --remove-based-on-parameters-percentile --pct-central 0.95 --eps-params 1e-6 --eps-L 1e-9
+
 
 def main():
+    parser = argparse.ArgumentParser(description="Process Args.")
+    parser.add_argument("--cell-name", type=str, default="CELL090",help="Cell name identifier")
+    parser.add_argument("--ecm-name", type=str, default="v3CM9",help="ECM model name")
+    parser.add_argument("--obj-func", type=str, default="RMSE",choices=["RMSE", "MAE", "MSE"],help="Objective function")
+    parser.add_argument("--num-trials", type=int, default=100,help="Number of optimization trials")
+    parser.add_argument("--remove-based-on-parameters-percentile",action="store_true",help="Apply parameter percentile filtering (criterion 6)")
+    parser.add_argument("--pct-central", type=float, default=0.95, help="Central percentile for parameter filtering")
+    parser.add_argument("--eps-params", type=float, default=1e-6,help="Minimum value for parameters (except L)")
+    parser.add_argument("--eps-L", type=float, default=1e-9,help="Minimum value for parameter L")
+    args = parser.parse_args()
+
+    CELL_NAME = args.cell_name
+    ECM_name = args.ecm_name
+    obj_func = args.obj_func
+    num_trials = args.num_trials
+    remove_based_on_parameters_percentile = args.remove_based_on_parameters_percentile
+    pct_central = args.pct_central
+    eps_params = args.eps_params
+    eps_L = args.eps_L
+
     # ==== Load battery metadata from JSON file ====
     battery_json_file = "../EVC_EIS_Data/original_data/Battery_Info_DRT.json" # Check the path
 
@@ -64,10 +82,12 @@ def main():
             df_step1 = df.loc[mask_freq1]
             print(f"Step 1: {len(df_step1)} rows kept after freq1 <= 10kHz")
 
-            # ---- Step 2: drop rows where ANY parameter < 1e-6
-            mask_params = (df_step1[PARAMS_NAMES[ECM_name]] >= 1e-6).all(axis=1)
-            df_step2 = df_step1.loc[mask_params]
-            print(f"Step 2: {len(df_step2)} rows kept after filtering parameters >= 1e-6")
+            # ---- Step 2: drop rows where ANY parameter < eps_params (or eps_L for L)
+            param_names = PARAMS_NAMES[ECM_name]
+            mask_params = df_step1[param_names].ge(eps_params)
+            mask_params["L"] = df_step1["L"].ge(eps_L)
+            df_step2 = df_step1.loc[mask_params.all(axis=1)]
+            print(f"Step 2: {len(df_step2)} rows kept after filtering parameters")
 
             # ---- Step 3: drop rows where RMSE_relMean> 0.015
             if "RMSE_abs_relMean" in df_step2.columns:
