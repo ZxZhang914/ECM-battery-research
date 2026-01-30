@@ -74,41 +74,6 @@ EXPANDED_PARAMS_NAMES = {
     "v3CM9": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM9
 }
 
-# Define Nonlinear Constrained Optimization (TC) ECM estimation
-# def time_constant_constraints(params, ECM_name):
-#     """
-#     Define nonlinear constraints for time constant ordering.
-#     This function returns a list of constraints that ensure the time constants of RC components are in ascending order.
-#     """
-#     if ECM_name == "v3CM2":
-#         R0_val, R1_val, R2_val, C1_val, n1_val, C2_val, n2_val = params
-#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val)]
-    
-#     elif ECM_name == "v3CM3":
-#         R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val = params
-#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
-#                 compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val)]
-    
-#     elif ECM_name == "v3CM4":
-#         R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val = params
-#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
-#                 compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val),
-#                 compute_time_constant(R4_val, C4_val, n4_val) - compute_time_constant(R3_val, C3_val, n3_val)]
-    
-#     elif ECM_name == "v3CM7":
-#         R0_val, R1_val, R2_val, R3_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, sigma_val = params
-#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val)]
-    
-#     elif ECM_name == "v3CM8":
-#         R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val, sigma_val = params
-#         return [compute_time_constant(R2_val, C2_val, n2_val) - compute_time_constant(R1_val, C1_val, n1_val),
-#                 compute_time_constant(R3_val, C3_val, n3_val) - compute_time_constant(R2_val, C2_val, n2_val)]
-#     #TODO: CM9
-#     elif ECM_name not in ECM_NAMES:
-#         raise ValueError(f"Unknown ECM name: {ECM_name}. Cannot define time constant constraints.")
-#     else:
-#         return [] # No constraints
-
 
 
 ### Pre-define cost functions
@@ -117,30 +82,7 @@ def cost_RMSE_abs(params, Z_exp, angular_freq, impedance_func):
     Z_model = impedance_func(params, angular_freq)
     error = np.abs(Z_model - Z_exp)
     rmse_abs =  np.sqrt(np.mean(error **2))
-    
-    # max_Zexp = np.max(np.abs(Z_exp)) # max Z magnitude
-    # normalized_rmse_abs = rmse_abs / max_Zexp
     return rmse_abs
-
-# def cost_RMSE_abs(params, Z_exp, angular_freq, impedance_func):
-#     Z_model = impedance_func(params, angular_freq)
-#     error = np.abs(Z_model - Z_exp)
-#     rmse_abs =  np.sqrt(np.mean(error **2))
-    
-#     max_Zexp = np.max(np.abs(Z_exp)) # max Z magnitude
-#     normalized_rmse_abs = rmse_abs / max_Zexp 
-
-#     # regularization (#C8 only)
-#     # R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4, Aw
-#     tau1 = compute_time_constant(params[1], params[5], params[6])
-#     tau2 = compute_time_constant(params[2], params[7], params[8])
-#     tau3 = compute_time_constant(params[3], params[9], params[10])
-
-#     # Regularization to enforce tau1 < tau2 < tau3
-#     penalty12 = np.maximum(0, tau1 - tau2)
-#     penalty23 = np.maximum(0, tau2 - tau3)
-
-#     return normalized_rmse_abs + 0 * (penalty12 + penalty23)
 
  
 # Normalized mean
@@ -151,9 +93,6 @@ def cost_RMSE_rel(params, Z_exp, angular_freq, impedance_func, epsilon=1e-8):
     denom[denom < epsilon] = epsilon # avoid division by near-zero
     rel_error = abs_error / denom
     rmsre = np.sqrt(np.mean(rel_error**2))
-
-    # max_Zexp = np.max(np.abs(Z_exp)) # max Z magnitude
-    # normalized_rmsre_rel = rmsre / max_Zexp
     return rmsre
 
 
@@ -182,7 +121,6 @@ def cost_R2_magnitude(params, Z_exp, angular_freq, impedance_func):
     rss = np.sum((Z_exp_mag - Z_model_mag) ** 2)
     exp_mean = np.mean(Z_exp_mag)
     tss = np.sum((Z_exp_mag - exp_mean) ** 2)
-    
     return 1 - (rss / tss)
 
 
@@ -413,16 +351,6 @@ def Bounded_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initia
         options=optimizer_options
     )
 
-    # # print("Using SLSQP optimizer for bounded optimization")
-    # result = minimize(
-    #     cost_function,
-    #     initial_guess,
-    #     method='SLSQP',
-    #     bounds=bounds,
-    #     options=optimizer_options
-    # )
-
-
     fitted_params = result.x
     sorted_params = sort_by_tau(fitted_params, ECM_name)
     if verbose:
@@ -481,118 +409,6 @@ def LSQ_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initial_gu
 
 
     
-
-# Define Nonlinear Constrained Optimization (TC) ECM estimation
-# def TC_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initial_guess, bounds=None, cost_func_name = None, optimizer_options=None, verbose=True):
-#     """
-#     ECM estimation using Scipy-"trust-constr" to add ordering contraints on time constants.
-#     This function is used to estimate ECM parameters
-#     """
-#     if optimizer_options is None:
-#         optimizer_options = {
-#             'maxiter': 3000,
-#             'disp': False,
-#             'finite_diff_rel_step': 1e-8  # More stable than default for small-valued params
-#         }
-
-#     # Select Cost Function
-#     if cost_func_name in COST_FUNCTION_MAP:
-#         raw_cost_func = COST_FUNCTION_MAP[cost_func_name]
-#         cost_function = partial(raw_cost_func, Z_exp=Z_exp, angular_freq=angular_freq, impedance_func=impedance_func)
-#     else:
-#         if cost_func_name is not None:
-#             print(f"Warning: Unknown cost function '{cost_func_name}', using 'Root Mean Sum of Squares' as default.")
-#         cost_function = partial(cost_RMSE_abs, Z_exp=Z_exp, angular_freq=angular_freq, impedance_func=impedance_func)
-
-#     if verbose:
-#         print(f"Estimating input EIS with ECM {ECM_name} (trust-constr)")
-    
-#     # Define Nonlinear Constraints for time constant ordering
-#     constraint_func = lambda params: time_constant_constraints(params, ECM_name)
-#     num_constraints = len(constraint_func(initial_guess))  # Number of constraints
-
-#     constraint_vals = constraint_func(initial_guess)
-#     if len(constraint_vals) > 0:
-#         nonlinear_constraints = NonlinearConstraint(
-#             fun=constraint_func,
-#             lb=[1e-7] * len(constraint_vals),
-#             ub=[np.inf] * len(constraint_vals)
-#         )
-#         constraints = [nonlinear_constraints]
-#     else:
-#         constraints = []
-    
-
-#     result = minimize(
-#         fun=cost_function,
-#         x0=initial_guess,
-#         method='trust-constr',
-#         bounds=bounds,
-#         constraints=constraints,
-#         options=optimizer_options
-#     )
-
-#     fitted_params = result.x
-#     # sorted_params = sort_by_tau(fitted_params, ECM_name)
-#     if verbose:
-#         print("Optimization success:", result.success)
-#         print("Estimated parameter values (sorted):", fitted_params)
-#         print("Final cost:", result.fun)
-    
-#     if not result.success:
-#         print("Trust-Constr Optimization not success:")
-#         print(result)
-    
-#     return fitted_params, result.fun, result
-
-
-
-# Given input EIS/impedance Z_exp and one ECM_candidate, return parameter estimation value for one ECM_candidate.
-# the return parameter estimation is given by the best result of Powell or L-BFGS-B
-# hardcode ECM6 time_constant sort that RC1 , RC2
-# def ECM_result_single_candidate(Z_exp, angular_freq, ECM_candidate_name, ECM_candidate_impedance_func, ECM_initial_guess, ECM_bounds, cost_func_name = None, verbose=True, optimizer_option_Powell=None, optimizer_option_BFGS=None):
-#     params = None
-#     sse = None
-#     opt_result = None
-#     ECM_name = ECM_candidate_name
-#     impedance_func = ECM_candidate_impedance_func
-#     initial_guess = ECM_initial_guess
-
-#     # base estimation algo already sort by tau
-#     powell_fitted_params, powell_cost, powell_optresult = Powell_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initial_guess, ECM_bounds, cost_func_name = cost_func_name, verbose=verbose, optimizer_options=optimizer_option_Powell)
-#     BFGS_fitted_params, BFGS_cost, BFGS_optresult = Bounded_ECM_estimation(Z_exp, angular_freq, ECM_name, impedance_func, initial_guess, ECM_bounds, cost_func_name = cost_func_name, verbose=verbose, optimizer_options=optimizer_option_BFGS)
-    
-#     if verbose:
-#         print(" ------------ ")
-
-#     # Decide which algo to use
-#     if (powell_cost > BFGS_cost) or any(p < 0 for p in powell_fitted_params):
-#         # I know there is only one incorrect case (131 lab data - 21EOL cycle 5)
-#         if(powell_cost < BFGS_cost and any(p < 0 for p in powell_fitted_params) and verbose):
-#             print("Powell better but gives negative estimation, do not use it")
-#         params = BFGS_fitted_params
-#         sse = BFGS_cost
-#         opt_result = BFGS_optresult
-#         if verbose:
-#             print("L-BFGS-B wins, use L-BFGS-B fitting result")
-#     elif powell_cost < BFGS_cost:
-#         params = powell_fitted_params
-#         sse = powell_cost
-#         opt_result = powell_optresult
-#         if verbose:
-#             print("Powell wins, use Powell fitting result")
-#     else: 
-#         params = powell_fitted_params
-#         sse = powell_cost
-#         opt_result = powell_optresult
-#         if verbose:
-#             print("Ties, use Powell fitting result")
-    
-#     if verbose:
-#         print("params:", params)
-    
-#     return params, sse, opt_result
-
 
 def perturb_initial_guess(base_guess, scale=0.2):
     """
