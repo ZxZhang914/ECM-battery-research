@@ -22,7 +22,7 @@ from utils import format_EIS, ECM_parameter_estimation
 # based on multiple criteria including frequency limits, parameter bounds, rmse thresholds, r2 thresholds, and optional percentile-based filtering.
 
 # Example usage:
-# python remove_outliers.py --cell-name CELL042 --ecm-name v3CM10 --obj-func RMSE --num-trials 100 --remove-based-on-parameters-percentile --pct-central 0.95 --eps-params 1e-6 --eps-L 1e-9
+# python remove_outliers.py --cell-name CELL090 --ecm-name v3CM8 --obj-func RMSE --num-trials 50 --remove-based-on-parameters-percentile --pct-central 0.95 --eps-params 1e-6 --eps-L 1e-9
 
 
 def main():

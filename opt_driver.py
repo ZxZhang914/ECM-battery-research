@@ -48,9 +48,9 @@ def main():
     for i in range(celli_metadata["num_soh"]):
         # Access SOH data
         soh_data = celli_metadata["soh"][i]
-        print(f"SOH idex {i+1}, EIS data file: {soh_data["file"]}, Charge Capacity is {soh_data["capacity"]}")
+        print(f"SOH idex {i+1}, EIS data file: {soh_data['file']}, Charge Capacity is {soh_data['capacity']}")
         # Access SOC data
-        print(f"---- This SOH state has {soh_data["num_soc"]} soc data: {soh_data["soc"]}")
+        print(f"---- This SOH state has {soh_data['num_soc']} soc data: {soh_data['soc']}")
 
 
     # Build EIS dictionary

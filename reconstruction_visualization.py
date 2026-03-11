@@ -23,13 +23,13 @@ from utils import format_EIS, EIS_Nyquist_meas_vs_fit_save
 # To run this script, ensure you have the necessary ECM fitting result CSV files available.
 
 # Example usage:
-# python reconstruction_visualization.py --cell-name CELL042 --ecm-name v3CM10  --obj-func RMSE --num-trials 100
+# python reconstruction_visualization.py --cell-name CELL042 --ecm-name v3CM8  --obj-func RMSE --num-trials 100
 
 def main():
 
     parser = argparse.ArgumentParser(description="ECM result configuration")
-    parser.add_argument("--cell-name", type=str, default="CELL013", help="Cell name identifier")
-    parser.add_argument("--ecm-name", type=str, default="v3CM9", help="ECM model name")
+    parser.add_argument("--cell-name", type=str, default="CELL042", help="Cell name identifier")
+    parser.add_argument("--ecm-name", type=str, default="v3CM8", help="ECM model name")
     parser.add_argument("--ecm-tag", type=str, default="ECMv9", help="ECM tag") # this is for matlab result
     parser.add_argument("--obj-func", type=str, default="RMSE", choices=["RMSE", "MAE", "MSE"], help="Objective function")
     parser.add_argument("--num-trials", type=int, default=100, help="Number of trials")
@@ -60,9 +60,9 @@ def main():
     for i in range(celli_metadata["num_soh"]):
         # Access SOH data
         soh_data = celli_metadata["soh"][i]
-        print(f"SOH idex {i+1}, EIS data file: {soh_data["file"]}, Charge Capacity is {soh_data["capacity"]}")
+        print(f"SOH idex {i+1}, EIS data file: {soh_data['file']}, Charge Capacity is {soh_data['capacity']}")
         # Access SOC data
-        print(f"---- This SOH state has {soh_data["num_soc"]} soc data: {soh_data["soc"]}")
+        print(f"---- This SOH state has {soh_data['num_soc']} soc data: {soh_data['soc']}")
 
 
     # Build EIS dictionary

@@ -171,7 +171,7 @@ def ECM_parameter_estimation(ECM_model_name, target_battery_name, target_battery
         
         # All SOC states
         for soc_i in range(soh_data["num_soc"]):
-            print(f"--- SOH = ({soh_i + 1}), Capacity = {soh_data["capacity"]}; SOC = ({soc_i+1}), {soh_data["soc"][soc_i]*100:.2f}%")
+            print(f"--- SOH = ({soh_i + 1}), Capacity = {soh_data['capacity']}; SOC = ({soc_i+1}), {soh_data['soc'][soc_i]*100:.2f}%")
             soc_EISdata = target_battery_EISdata[soh_i][soc_i]
             Z_meas = soc_EISdata["Z_real"] + soc_EISdata["Z_imag"]*1j
             angular_freq = soc_EISdata["angular_freq"]
