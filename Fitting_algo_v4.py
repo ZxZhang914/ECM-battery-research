@@ -10,9 +10,9 @@ INITIAL_GUESS = {
     "v3CM1": [0.005, 0.01, 0.05, 0.9], # v3CM1: R0, R1, C1, n1
     "v3CM2":[0.005, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9], # v3CM2: R0, R1, R2, C1, n1, C2, n2
     "v3CM3":[0.005, 0.01, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.5, 0.9], # v3CM3: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3
-    "v3CM4":[0.005, 0.01, 0.01, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.5, 0.9, 0.5, 0.9], # v3CM4: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4
-    "v3CM5":[0.005, 0.01, 0.05, 0.9, 0.001], # v3CM5: R0, R1, C1, n1, Aw
-    "v3CM6":[0.005, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.001], # v3CM6: R0, R1, R2, C1, n1, C2, n2, Aw
+    "v3CM4":[1e-5, 0.005, 0.01, 0.05, 0.9, 0.001], # v3CM4: L, R0, R1, C1, n1, Aw
+    "v3CM5":[1e-5, 0.005, 0.01, 0.01, 0.05, 0.05, 0.9, 0.9, 0.001], # v3CM5: L, R0, R1, R2, C1, C2, n1, n2, Aw
+    "v3CM6":[1e-5, 0.005, 0.01, 0.01, 0.01, 0.05, 0.05, 0.05, 0.9, 0.9, 0.9, 0.001], # v3CM6: L, R0, R1, R2, R3, C1, C2, C3, n1, n2, n3, Aw
     "v3CM7":[0.005, 0.005, 0.01, 0.01, 0.05, 0.9, 0.1, 0.9, 0.005, 0.9, 0.001], # v3CM7: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
     "v3CM8":[1e-5, 0.005, 0.01, 0.01, 0.01, 0.05, 0.05, 0.05, 0.9, 0.9, 0.9, 0.001], 
     "v3CM9":[1e-5, 0.005, 0.01, 0.01, 0.05, 0.05, 0.9, 0.9, 0.001], # v3CM9: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
@@ -24,9 +24,9 @@ PARAMS_NAMES = {
     "v3CM1": ["R0", "R1", "C1", "n1"], # v3CM1: R0, R1, C1, n1
     "v3CM2": ["R0", "R1", "R2", "C1", "n1", "C2", "n2"], # v3CM2: R0, R1, R2, C1, n1, C2, n2
     "v3CM3": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3"], # v3CM3: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3
-    "v3CM4": ["R0", "R1", "R2", "R3", "R4", "C1", "n1", "C2", "n2", "C3", "n3", "C4", "n4"], # v3CM4: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4
-    "v3CM5": ["R0", "R1", "C1", "n1", "Aw"], # v3CM5: R0, R1, C1, n1, Aw
-    "v3CM6": ["R0", "R1", "R2", "C1", "n1", "C2", "n2", "Aw"], # v3CM6: R0, R1, R2, C1, n1, C2, n2, Aw
+    "v3CM4": ["L", "R0", "R1", "C1", "n1", "Aw"], # v3CM4: L, R0, R1, C1, n1, Aw
+    "v3CM5": ["L", "R0", "R1", "R2", "C1", "C2", "n1", "n2", "Aw"], # v3CM5: L, R0, R1, R2, C1, C2, n1, n2, Aw
+    "v3CM6": ["L", "R0", "R1", "R2", "R3", "C1", "C2", "C3", "n1", "n2", "n3", "Aw"], # v3CM6: L, R0, R1, R2, R3, C1, C2, C3, n1, n2, n3, Aw
     "v3CM7": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw"], # v3CM7: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
     "v3CM8":["L","R0","R1","R2","R3","C1","C2","C3","n1","n2","n3","Aw"], # v3CM8: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4, Aw
     "v3CM9": ["L", "R0", "R1", "R2", "C1", "C2", "n1", "n2", "Aw"], # v3CM9: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
@@ -39,9 +39,9 @@ BOUNDS = {
     "v3CM1": [(eps, 100), (eps, 100), (eps, 100), (0.8, 1)], # v3CM1: R0, R1, C1, n1
     "v3CM2": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1)], # v3CM2: R0, R1, R2, C1, n1, n2, C2
     "v3CM3": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1)], # v3CM3: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3
-    "v3CM4": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1)], # v3CM4: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4
-    "v3CM5": [(eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100)], # v3CM5: R0, R1, C1, n1, Aw
-    "v3CM6": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100)], # v3CM6: R0, R1, R2, C1, n1, C2, n2, Aw
+    "v3CM4": [(eps,1), (eps,100), (eps,100), (eps,100), (0.8,1), (eps,100)], # v3CM4: L, R0, R1, C1, n1, Aw
+    "v3CM5": [(eps,1), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (0.8,1), (0.8,1), (eps,100)], # v3CM5: L, R0, R1, R2, C1, C2, n1, n2, Aw
+    "v3CM6": [(eps,1), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (0.8,1), (0.8,1), (0.8,1), (eps,100)], # v3CM6: L, R0, R1, R2, R3, C1, C2, C3, n1, n2, n3, Aw
     "v3CM7": [(eps, 100), (eps, 100), (eps, 100), (eps, 100), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100), (0.8, 1), (eps, 100)], # v3CM7: R0, R1, R2, R3, C1, n1, C2, n2, C3, n3, Aw
     "v3CM8": [(eps,1), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (0.8,1), (0.8,1), (0.8,1), (eps,100)], # v3CM8: R0, R1, R2, R3, R4, C1, n1, C2, n2, C3, n3, C4, n4, Aw
     "v3CM9": [(eps,1), (eps,100), (eps,100), (eps,100), (eps,100), (eps,100), (0.8,1), (0.8,1), (eps,100)], # v3CM9: L, R0, R1, R2, C1, C2, n1, n2, Aw
@@ -56,9 +56,9 @@ ECM_NUM_RCS = {
     "v3CM1": 1,
     "v3CM2": 2,
     "v3CM3": 3,
-    "v3CM4": 4,
-    "v3CM5": 0,
-    "v3CM6": 1,
+    "v3CM4": 1,
+    "v3CM5": 2,
+    "v3CM6": 3,
     "v3CM7": 2,
     "v3CM8": 3,
     "v3CM9": 2,
@@ -70,9 +70,9 @@ EXPANDED_PARAMS_NAMES = {
     "v3CM1": ["R0", "R1", "C1", "n1", "tau1", "freq1"], # v3CM1
     "v3CM2": ["R0", "R1", "R2", "C1", "n1", "C2", "n2", "tau1", "freq1", "tau2", "freq2"], # v3CM2
     "v3CM3": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM3
-    "v3CM4": ["R0", "R1", "R2", "R3", "R4", "C1", "n1", "C2", "n2", "C3", "n3", "C4", "n4", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3", "tau4", "freq4"], # v3CM4
-    "v3CM5": ["R0", "R1", "C1", "n1", "Aw"], # v3CM5
-    "v3CM6": ["R0", "R1", "R2", "C1", "n1", "C2", "n2", "Aw", "tau1", "freq1"], # v3CM6
+    "v3CM4": ["L", "R0", "R1", "C1", "n1", "Aw", "tau1", "freq1"], # v3CM4
+    "v3CM5": ["L", "R0", "R1", "R2", "C1", "C2", "n1", "n2", "Aw", "tau1", "freq1", "tau2", "freq2"], # v3CM5
+    "v3CM6": ["L", "R0", "R1", "R2", "R3", "C1", "C2", "C3", "n1", "n2", "n3", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM6
     "v3CM7": ["R0", "R1", "R2", "R3", "C1", "n1", "C2", "n2", "C3", "n3", "Aw", "tau1", "freq1", "tau2", "freq2"], # v3CM7
     "v3CM8": ["L", "R0", "R1", "R2", "R3", "C1", "C2", "C3","n1", "n2", "n3", "Aw", "tau1", "freq1", "tau2", "freq2", "tau3", "freq3"], # v3CM8
     "v3CM9": ["L", "R0", "R1", "R2", "C1", "C2", "n1", "n2", "Aw", "tau1", "freq1", "tau2", "freq2"], # v3CM9
@@ -191,25 +191,42 @@ def sort_by_tau(params, ECM_name):
         params = [float(v) for v in params]
     
     elif ECM_name == "v3CM4":
-        R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val = params
-
-        RC_products = [compute_time_constant(R1_val, C1_val, n1_val), compute_time_constant(R2_val, C2_val, n2_val), compute_time_constant(R3_val, C3_val, n3_val), compute_time_constant(R4_val, C4_val, n4_val)]
-        sorted_indices = sorted(range(4), key=lambda i: RC_products[i])
-
-        R_vals = [R1_val, R2_val, R3_val, R4_val]
-        C_vals = [C1_val, C2_val, C3_val, C4_val]
-        n_vals = [n1_val, n2_val, n3_val, n4_val]
-
-        sorted_R = [R_vals[i] for i in sorted_indices]
-        sorted_C = [C_vals[i] for i in sorted_indices]
-        sorted_n = [n_vals[i] for i in sorted_indices]
-
-        R1_val, R2_val, R3_val, R4_val = sorted_R
-        C1_val, C2_val, C3_val, C4_val = sorted_C
-        n1_val, n2_val, n3_val, n4_val = sorted_n
-
-        params = [R0_val, R1_val, R2_val, R3_val, R4_val, C1_val, n1_val, C2_val, n2_val, C3_val, n3_val, C4_val, n4_val]
         params = [float(v) for v in params]
+
+    elif ECM_name == "v3CM5":
+        L, R0, R1, R2, C1, C2, n1, n2, sigma = params
+
+        tau1 = compute_time_constant(R1, C1, n1)
+        tau2 = compute_time_constant(R2, C2, n2)
+
+        if tau1 > tau2:
+            R1, R2 = R2, R1
+            C1, C2 = C2, C1
+            n1, n2 = n2, n1
+
+        params = [L, R0, R1, R2, C1, C2, n1, n2, sigma]
+
+    elif ECM_name == "v3CM6":
+        L, R0, R1, R2, R3, C1, C2, C3, n1, n2, n3, sigma = params
+
+        rc_list = [
+            (compute_time_constant(R1, C1, n1), R1, C1, n1),
+            (compute_time_constant(R2, C2, n2), R2, C2, n2),
+            (compute_time_constant(R3, C3, n3), R3, C3, n3),
+        ]
+        rc_list_sorted = sorted(rc_list, key=lambda x: x[0])
+
+        R_sorted = [x[1] for x in rc_list_sorted]
+        C_sorted = [x[2] for x in rc_list_sorted]
+        n_sorted = [x[3] for x in rc_list_sorted]
+
+        params = [
+            L, R0,
+            R_sorted[0], R_sorted[1], R_sorted[2],
+            C_sorted[0], C_sorted[1], C_sorted[2],
+            n_sorted[0], n_sorted[1], n_sorted[2],
+            sigma,
+        ]
     
 
     elif ECM_name == "v3CM7":
