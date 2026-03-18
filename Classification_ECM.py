@@ -22,7 +22,7 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 ##### Load EIS data-set #####
 
-filename="xy_data_33k_6circuit_v2.mat"
+filename="xy_data_16k_6circuit_v2.mat"
 
 x=scipy.io.loadmat(filename)["x_data"]
 y=scipy.io.loadmat(filename)["y_data"]
@@ -220,6 +220,33 @@ test_list1=y_test_class
         
 cm=confusion_matrix(test_list1,test_list2)
 
+misclassified_idx = []
+
+for i in range(len(test_list1)):
+    if test_list1[i] != test_list2[i]:
+        misclassified_idx.append(i)
+
+print("Total misclassified:", len(misclassified_idx))
+
+mis_c2_c3 = []
+mis_c5_c6 = []
+
+for i in misclassified_idx:
+
+    true_label = int(test_list1[i])
+    pred_label = int(test_list2[i])
+
+    # C2 vs C3
+    if (true_label == 1 and pred_label == 2) or (true_label == 2 and pred_label == 1):
+        mis_c2_c3.append(i)
+
+    # C5 vs C6
+    if (true_label == 4 and pred_label == 5) or (true_label == 5 and pred_label == 4):
+        mis_c5_c6.append(i)
+
+print("C2/C3 misclassified:", len(mis_c2_c3))
+print("C5/C6 misclassified:", len(mis_c5_c6))
+
 disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                               display_labels=["C1","C2"
                               ,"C3","C4","C5", "C6"])
@@ -241,3 +268,50 @@ for idx in range(len(test_list1)):
     if test_list1[idx]==5:c6=c6+1   
 print(c1,c2,c3,c4,c5,c6)
 
+# save misclassified signals
+mis_data = []
+mis_true = []
+mis_pred = []
+
+for idx in misclassified_idx:
+
+    mis_data.append(x_t[idx])
+    mis_true.append(int(test_list1[idx]))
+    mis_pred.append(int(test_list2[idx]))
+
+mis_data = np.array(mis_data)
+mis_true = np.array(mis_true)
+mis_pred = np.array(mis_pred)
+
+np.savez(
+    Experiment_path+"/misclassified_samples.npz",
+    data=mis_data,
+    true_label=mis_true,
+    pred_label=mis_pred,
+    index=misclassified_idx
+)
+
+print("Saved misclassified samples")
+
+def plot_eis(sample, true_label, pred_label):
+
+    Zre = sample[:,0]
+    Zim = sample[:,1]
+
+    plt.figure(figsize=(4,4))
+    plt.plot(Zre,-Zim,'o-')
+
+    plt.xlabel("Z'")
+    plt.ylabel("-Z''")
+    plt.title(f"True C{true_label+1}  Pred C{pred_label+1}")
+    plt.axis("equal")
+
+    plt.show()
+
+for i in mis_c2_c3[:5]:
+
+    plot_eis(
+        x_t[i],
+        int(test_list1[i]),
+        int(test_list2[i])
+    )
